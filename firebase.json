@@ -3,6 +3,9 @@
     "public": "yes",
     "ignore": [
       "firebase.json",
+      "**/*BACKUP*.json",
+      "**/*Backup*.json",
+      "**/*backup*.json",
       "**/.*",
       "**/node_modules/**"
     ],
