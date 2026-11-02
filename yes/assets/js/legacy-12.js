@@ -35,6 +35,7 @@
     q('cliMaintenanceOwner')?.setAttribute('list','ownerSuggestions620');
   }
   refreshContactSuggestions();
+  window.romvosRefreshContactSuggestions=refreshContactSuggestions;
 
   // Καθαρή προσθήκη νέου καταστήματος/επαφής.
   const oldOpen=window.openNewClientEditor;

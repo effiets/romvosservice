@@ -11,6 +11,9 @@ service cloud.firestore {
     function writer() {
       return approved() && member().role in ['owner', 'editor'];
     }
+    function owner() {
+      return approved() && member().role == 'owner';
+    }
     function metaPath() {
       return /databases/$(database)/documents/workspaces/romvos/scheduling/_meta;
     }
@@ -30,38 +33,39 @@ service cloud.firestore {
       function validMeta() {
         return request.resource.data.keys().hasOnly([
           'revision', 'operationId', 'updatedBy', 'updatedAt', 'schemaVersion'
-        ]) && validStamp(request.resource.data) && request.resource.data.schemaVersion == 1;
+        ]) && validStamp(request.resource.data) && request.resource.data.schemaVersion == 3;
       }
-      function validRecord() {
+      function validModule() {
         let data = request.resource.data;
         let after = getAfter(metaPath()).data;
-        return data.keys().hasOnly([
+        return request.auth != null && data.keys().hasOnly([
           'kind', 'key', 'payload', 'deleted', 'revision', 'operationId', 'updatedBy', 'updatedAt'
         ]) && validStamp(data)
-          && data.kind in ['employees', 'vehicles', 'jobs', 'drafts', 'candidates', 'board']
+          && data.kind == 'module'
+          && data.key in ['employees', 'vehicles', 'jobs', 'drafts', 'candidates', 'board',
+            'clients', 'reminders', 'todos', 'todoArchive', 'orders', 'incoming', 'returns']
           && data.key is string && data.key.matches('^[A-Za-z0-9_#:.-]{1,200}$')
           && recordId == data.kind + '__' + data.key
-          && data.payload is string && data.payload.size() <= 250000
-          && data.deleted is bool && (!data.deleted || data.payload == 'null')
-          // Each data change must accompany the same revision transaction.
+          && data.payload is string && data.payload.size() <= 900000
+          && data.deleted == false
+          // Module access is authorized through the _meta write in the same
+          // atomic request. This keeps initial import below rules access limits.
           && after.revision == data.revision && after.operationId == data.operationId
+          && after.schemaVersion == 3
           && after.updatedAt == request.time && after.updatedBy == request.auth.uid
-          && (exists(metaPath())
-            ? after.revision == get(metaPath()).data.revision + 1
-            : member().role == 'owner' && after.revision == 1);
+          && data.updatedBy == request.auth.uid;
       }
-      allow create: if writer() && (recordId == '_meta'
-        ? member().role == 'owner' && validMeta() && request.resource.data.revision == 1
-        : validRecord());
-      allow update: if writer() && (recordId == '_meta'
+      allow create: if recordId == '_meta'
+        ? owner() && validMeta() && request.resource.data.revision == 1
+        : validModule();
+      allow update: if recordId == '_meta'
         ? validMeta() && request.resource.data.revision == resource.data.revision + 1
-        : validRecord() && request.resource.data.kind == resource.data.kind
-          && request.resource.data.key == resource.data.key);
-      // Deletions are versioned tombstones, so stale clients cannot resurrect
-      // an appointment by accidentally saving an older copy of the schedule.
+          && writer()
+        : validModule() && request.resource.data.kind == resource.data.kind
+          && request.resource.data.key == resource.data.key;
       allow delete: if false;
     }
-    // All other modules remain inaccessible through Firestore until migrated.
+    // Other HTML applications (inventory, HR, invoices, fleet) remain inaccessible.
     match /{document=**} {
       allow read, write: if false;
     }

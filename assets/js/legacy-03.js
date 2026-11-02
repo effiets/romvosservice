@@ -452,7 +452,7 @@ function printMovementDay(){
  dayDates.innerHTML=`<div class="board-date selected">${dayName.charAt(0).toUpperCase()+dayName.slice(1)}<br>${dateText}</div>`;
  const dayGrid=document.createElement('div');dayGrid.className='board-grid day-only-grid';
  let count=0;
- for(let slot=1;slot<=4;slot++){
+ for(let slot=1;slot<=BOARD_CREW_COUNT;slot++){
    const key=boardKey(date,slot),entry=B[key]||{};
    const hasWork=((entry.drafts||[]).length>0)||((entry.jobs||[]).length>0);
    if(!hasWork)continue;
@@ -472,7 +472,7 @@ function printSelectedCrew(){
  printMovementCrew(selectedBoardCrewSlot());
 }
 function printMovementCrew(slot){
- slot=Math.min(4,Math.max(1,parseInt(slot,10)||1));
+ slot=Math.min(BOARD_CREW_COUNT,Math.max(1,parseInt(slot,10)||1));
  const date=boardSelectedDate||boardStart;
  const key=boardKey(date,slot),entry=B[key]||{};
  const hasWork=((entry.drafts||[]).length>0)||((entry.jobs||[]).length>0);
@@ -508,7 +508,7 @@ function printMovementDayPerCrew(){
    'Πριν την επιστροφή στην έδρα: επικοινωνία μαζί μου.'
  ];
  let count=0;
- for(let slot=1;slot<=4;slot++){
+ for(let slot=1;slot<=BOARD_CREW_COUNT;slot++){
    const key=boardKey(date,slot),entry=B[key]||{};
    const hasWork=((entry.drafts||[]).length>0)||((entry.jobs||[]).length>0);
    if(!hasWork)continue;

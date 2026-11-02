@@ -19,6 +19,7 @@ export function initializeScheduleUi() {
   let failed = false;
   let saveQueued = false;
   let generation = 0;
+  let selectedBackup;
 
   function show(text, error = false) {
     status.textContent = text;
@@ -29,6 +30,7 @@ export function initializeScheduleUi() {
   function controls() {
     byId('scheduleJoin').hidden = shared || !latest?.initialized || !member;
     byId('scheduleInitialize').hidden = shared || !latest || latest.initialized || member?.role !== 'owner';
+    byId('scheduleImportBackup').hidden = shared || !selectedBackup || !latest || latest.initialized || member?.role !== 'owner';
     byId('scheduleRetry').hidden = !failed || !member || member.role === 'viewer' && Boolean(operation);
     byId('scheduleReload').hidden = !shared || !failed || !latest?.initialized;
     byId('scheduleRecovery').hidden = !member || !(localStorage.getItem(recoveryKey()) || localStorage.getItem(`${recoveryKey()}_previous`));
@@ -37,7 +39,7 @@ export function initializeScheduleUi() {
     dialog.querySelectorAll('button').forEach(button => { button.disabled = busy; });
     bridge.lock(shared && (busy || failed || !view || !member));
     byId('accountStorageScope').textContent = shared
-      ? 'Κοινά: πρόγραμμα, εργασίες, τεχνικοί και οχήματα. Οι υπόλοιπες ενότητες παραμένουν τοπικές.'
+      ? 'Κοινά: πρόγραμμα, εργασίες, τεχνικοί, οχήματα, επαφές, To Do και αρχείο, υπενθυμίσεις, παραγγελίες, εισερχόμενος εξοπλισμός και επιστροφές.'
       : 'Τα δεδομένα αποθηκεύονται σε αυτόν τον browser. Το κοινό πρόγραμμα ενεργοποιείται ξεχωριστά.';
   }
   function apply(snapshot) {
@@ -89,7 +91,7 @@ export function initializeScheduleUi() {
         show(snapshot.initialized
           ? 'Υπάρχει κοινό πρόγραμμα. Η σύνδεση θα το φορτώσει εδώ. Το σημερινό τοπικό πρόγραμμα θα διατηρηθεί ξεχωριστά στον browser.'
           : member.role === 'owner'
-            ? 'Δεν έχει δημιουργηθεί κοινό πρόγραμμα. Μπορείς να ξεκινήσεις με τον πίνακα, τις εργασίες, τους τεχνικούς και τα οχήματα αυτού του browser.'
+            ? 'Δεν έχει δημιουργηθεί κοινό πρόγραμμα. Η δημιουργία θα μεταφέρει όλες τις ενότητες του service από αυτόν τον browser. Επίλεξε πρώτα το σωστό, ενημερωμένο αντίγραφο.'
             : 'Ο υπεύθυνος της ομάδας χρειάζεται να δημιουργήσει πρώτα το κοινό πρόγραμμα.');
         controls();
       } else if (!snapshot.initialized) onFailure(new Error('Shared schedule missing'));
@@ -148,6 +150,7 @@ export function initializeScheduleUi() {
   }
 
   window.romvosScheduleBeforeSave = () => {
+    if (bridge.isApplying?.()) return false;
     if (!shared) return true;
     if (!member || busy || failed || !view) return false;
     if (member.role === 'viewer') {
@@ -157,6 +160,20 @@ export function initializeScheduleUi() {
         show('Ο λογαριασμός σου έχει δικαίωμα προβολής. Το κοινό πρόγραμμα δεν άλλαξε.', true);
         open(); return false;
       }
+    }
+    return true;
+  };
+  window.romvosServiceBeforeWrite = () => {
+    if (bridge.isApplying?.()) return false;
+    if (!shared) return true;
+    if (!member || busy || failed || !view) return false;
+    if (member.role === 'viewer') {
+      bridge.apply(view.state);
+      show('Ο λογαριασμός σου έχει δικαίωμα προβολής. Τα κοινά δεδομένα δεν άλλαξαν.', true);
+      // Some legacy handlers assign their array again after setItem returns.
+      queueMicrotask(() => { if (shared && view && member?.role === 'viewer') bridge.apply(view.state); });
+      open();
+      return false;
     }
     return true;
   };
@@ -186,6 +203,26 @@ export function initializeScheduleUi() {
       const desired = bridge.capture();
       const records = scheduleRecords(desired);
       await commit({ expectedRevision: 0, operationId: crypto.randomUUID(), changes: scheduleChanges(new Map(), records), desired }, records, true);
+    } catch (error) { onFailure(error); }
+  });
+  window.addEventListener('romvos:backup-selected', event => {
+    selectedBackup = event.detail || undefined;
+    controls();
+  });
+  byId('scheduleImportBackup').addEventListener('click', async () => {
+    if (!selectedBackup || member?.role !== 'owner' || latest?.initialized || busy) return;
+    const date = selectedBackup.source.createdAt
+      ? new Intl.DateTimeFormat('el-GR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Europe/Athens' })
+        .format(new Date(selectedBackup.source.createdAt))
+      : 'χωρίς καταγεγραμμένη ημερομηνία';
+    const count = selectedBackup.records.size;
+    if (!confirm(`Θα δημιουργηθεί το κοινό service από το αρχείο «${selectedBackup.fileName}».\n\nBackup: ${date}\nΕγγραφές cloud: ${count}\n\nΟι ενότητες των άλλων HTML δεν θα εισαχθούν. Συνέχεια;`)) return;
+    try {
+      rememberLocal();
+      const desired = selectedBackup.state;
+      const records = selectedBackup.records;
+      await commit({ expectedRevision: 0, operationId: crypto.randomUUID(),
+        changes: scheduleChanges(new Map(), records), desired }, records, true);
     } catch (error) { onFailure(error); }
   });
   byId('scheduleRetry').addEventListener('click', () => {
