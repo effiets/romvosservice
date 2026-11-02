@@ -2103,6 +2103,7 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
 }
 </style>
 
+<link rel="stylesheet" href="assets/css/auth.css">
 </head>
 <body><div id="romvosSplash">
   <div class="splash-card">
@@ -2120,7 +2121,15 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
 <button class="btn" type="button" onclick="document.getElementById('romvosRestoreFile').click()" style="width:100%;background:#e5e7eb;color:#111827;font-size:11px">📂 ΕΠΑΝΑΦΟΡΑ BACKUP</button>
 <input id="romvosRestoreFile" type="file" accept=".json,application/json" style="display:none" onchange="restoreAllRomvosData(this)">
 <div style="font-size:9px;color:#94a3b8;line-height:1.3;margin-top:6px">Κράτησε το αρχείο backup σε ασφαλές σημείο.</div>
-</div></aside><main>
+</div>
+<div class="account-sidebar">
+  <p id="accountSummary">Τοπική λειτουργία</p>
+  <button id="accountOpen" class="btn light" type="button">Σύνδεση χρήστη</button>
+  <small id="accountStorageScope">Τα δεδομένα αποθηκεύονται σε αυτόν τον browser. Το κοινό πρόγραμμα ενεργοποιείται ξεχωριστά.</small>
+  <p id="scheduleSummary">Τοπικό πρόγραμμα</p>
+  <button id="scheduleOpen" class="btn light" type="button">Κοινό πρόγραμμα</button>
+</div>
+</aside><main>
 <section id="board" class="section active"><div class="board-layout"><div class="board-pool"><div class="board-candidate-section"><div class="pool-head"><h3>Υποψήφιες εργασίες επόμενων ημερών</h3><button class="btn primary mini" onclick="addCandidateJob()">+ Υποψ.</button></div><div class="small">Τις μαζεύεις μέσα στη μέρα και τις σέρνεις στο συνεργείο όταν κλειδώσεις το πρόγραμμα. Μπορείς και να σύρεις εδώ πίσω μια εργασία από συνεργείο.</div><div id="poolCandidates" class="drop-pool candidate-pool" data-kind="candidate"></div></div><div id="poolJobs" class="drop-pool jobs-pool" data-kind="draft" style="display:none!important" aria-hidden="true"></div><div class="resource-bank"><h3>Διαθέσιμοι για την επιλεγμένη ημέρα</h3><div class="bank-label">👷 Τεχνικοί</div><div id="poolEmps" class="drop-pool resource-pool" data-kind="emp"></div><div class="bank-label">🚐 VAN</div><div id="poolVehs" class="drop-pool resource-pool" data-kind="veh"></div></div></div><div class="board-right"><div class="top"><div><h1>Πίνακας Κίνησης Συνεργείων</h1><div class="small">Σχεδιασμός ημέρας και επόμενων ημερών: εργασία, τεχνικοί και VAN.</div></div><div class="actions board-head-actions"><div class="board-week-nav"><button class="btn light" onclick="boardPrevWeek()">◀ Προηγούμενη</button><button class="btn light" onclick="boardNextWeek()">Επόμενη ▶</button></div><button class="btn primary" onclick="boardToday()">Σήμερα</button><button class="btn primary board-planner-fullscreen-open" type="button" onclick="openBoardPlannerFullscreen()" title="Πλήρης οθόνη προγραμματισμού">⛶ Πλήρης οθόνη</button><button class="btn danger board-planner-fullscreen-close" type="button" onclick="closeBoardPlannerFullscreen()" title="Κλείσιμο πλήρους οθόνης">✕ Κλείσιμο</button><button class="btn light" type="button" onclick="openDailyBoardView()">👁 Εργασίες ημέρας</button><div class="board-crew-tools"><select id="boardCrewSelect" title="Επίλεξε συνεργείο"><option value="1">Συνεργείο 1</option><option value="2">Συνεργείο 2</option><option value="3">Συνεργείο 3</option><option value="4">Συνεργείο 4</option></select><button class="btn light" type="button" onclick="openCrewBoardView()" title="Προβολή μόνο του επιλεγμένου συνεργείου">👁 Προβολή</button><button class="btn light" type="button" onclick="printSelectedCrew()" title="Εκτύπωση μόνο του επιλεγμένου συνεργείου">🖨️ Εκτύπωση</button></div><button class="btn light" type="button" onclick="printMovementDay()">🖨️ Ημέρα</button><button class="btn light" type="button" onclick="printMovementBoard()">🖨️ Εβδομάδα / PDF</button></div></div><div class="availability-bar">
 <div class="av-card av-day-summary"><span class="av-day-label">Επιλεγμένη ημέρα</span><b id="avDay">—</b><span class="av-job-inline">Εργασίες <strong id="avJobCount">0</strong></span></div>
 <div class="av-card">Διαθέσιμοι τεχνικοί<b id="avEmpCount">0</b><div id="avEmpList" class="av-list"></div></div>
@@ -2794,4 +2803,48 @@ body.board-mode nav button{font-size:12px!important;padding:8px 9px!important;ma
 </style>
 <script id="romvos-v37-draggable-alert-js" src="assets/js/legacy-34.js"></script>
 
+<dialog id="accountDialog" aria-labelledby="accountTitle" aria-describedby="accountIntro">
+  <div class="account-brand">ROMVOS SERVICE</div>
+  <h2 id="accountTitle">Σύνδεση ομάδας</h2>
+  <p id="accountIntro" class="account-intro">Συνδέσου με το προσωπικό σου email και τον κωδικό που έχει οριστεί για την ομάδα.</p>
+  <form id="accountLoginForm">
+    <label>Email<input id="accountEmail" name="email" type="email" autocomplete="username" required></label>
+    <label>Κωδικός<input id="accountPassword" name="password" type="password" autocomplete="current-password" required></label>
+    <button id="accountSubmit" class="btn primary" type="submit">Σύνδεση</button>
+  </form>
+  <p id="accountStatus" class="account-status" role="status" aria-live="polite">Συνδέσου με τον λογαριασμό της ομάδας σου.</p>
+  <div id="accountDetails" class="account-details" hidden>
+    <p id="accountEmailValue"></p>
+    <p>Αναγνωριστικό χρήστη: <code id="accountUidValue"></code></p>
+  </div>
+  <div class="account-actions">
+    <button id="accountRetry" class="btn light" type="button" hidden>Νέα προσπάθεια</button>
+    <button id="accountSignOut" class="btn light" type="button" hidden>Αποσύνδεση</button>
+    <button id="accountClose" class="btn light" type="button">Επιστροφή</button>
+  </div>
+</dialog>
+<dialog id="scheduleDialog" aria-labelledby="scheduleTitle" aria-describedby="scheduleIntro">
+  <div class="account-brand">ROMVOS SERVICE</div>
+  <h2 id="scheduleTitle">Κοινό πρόγραμμα ομάδας</h2>
+  <p id="scheduleIntro" class="account-intro">Ο πίνακας συνεργείων, οι εργασίες, οι τεχνικοί και τα οχήματα ενημερώνονται για όλα τα μέλη. Οι υπόλοιπες ενότητες παραμένουν τοπικές σε αυτή τη φάση.</p>
+  <p id="scheduleStatus" class="account-status" role="status" aria-live="polite">Συνδέσου πρώτα με τον λογαριασμό της ομάδας σου.</p>
+  <details class="backup-inspection">
+    <summary>Προεπισκόπηση backup JSON</summary>
+    <p class="account-intro">Δες τις ενότητες και το πλήθος εγγραφών πριν από τη μεταφορά. Το αρχείο διαβάζεται μόνο σε αυτόν τον browser.</p>
+    <label for="backupInspectFile">Αρχείο backup</label>
+    <input id="backupInspectFile" type="file" accept=".json,application/json">
+    <div id="backupInspectResult" class="account-details backup-inspection-result" role="status" aria-live="polite" hidden></div>
+  </details>
+  <div class="account-actions">
+    <button id="scheduleJoin" class="btn primary" type="button" hidden>Φόρτωση κοινού προγράμματος</button>
+    <button id="scheduleInitialize" class="btn primary" type="button" hidden>Δημιουργία από αυτό το πρόγραμμα</button>
+    <button id="scheduleRetry" class="btn primary" type="button" hidden>Νέα προσπάθεια</button>
+    <button id="scheduleRecovery" class="btn light" type="button" hidden>Λήψη μη αποθηκευμένης αλλαγής</button>
+    <button id="scheduleReload" class="btn light" type="button" hidden>Φόρτωση τελευταίου προγράμματος</button>
+    <button id="scheduleLocal" class="btn light" type="button" hidden>Επιστροφή στο τοπικό πρόγραμμα</button>
+    <button id="scheduleClose" class="btn light" type="button">Κλείσιμο</button>
+  </div>
+</dialog>
+<script src="assets/js/schedule-bridge.js"></script>
+<script type="module" src="assets/js/auth-ui.mjs"></script>
 </body></html>

@@ -1,0 +1,74 @@
+const modules = [
+  { key: 'clients', storage: 'cf_clients', label: 'Επαφές' },
+  { key: 'employees', storage: 'cf_employees', label: 'Τεχνικοί' },
+  { key: 'vehicles', storage: 'cf_vehicles', label: 'Οχήματα' },
+  { key: 'jobs', storage: 'cf_jobs', label: 'Εργασίες / ραντεβού' },
+  { key: 'drafts', storage: 'romvos_board_drafts', label: 'Πρόχειρες εργασίες' },
+  { key: 'candidates', storage: 'romvos_board_candidates_v1', label: 'Υποψήφιες εργασίες' },
+  { key: 'board', storage: 'romvos_board', label: 'Θέσεις πίνακα συνεργείων' },
+  { key: 'reminders', storage: 'romvos_simple_reminders', label: 'Υπενθυμίσεις' },
+  { key: 'todos', storage: 'romvos_todo_v1', label: 'To Do' },
+  { key: 'todoArchive', storage: 'romvos_todo_archive_v1', label: 'Αρχείο To Do' },
+  { key: 'orders', storage: 'romvos_supplier_orders', label: 'Παραγγελίες' },
+  { key: 'incoming', storage: 'romvos_incoming_equipment', label: 'Εισερχόμενος εξοπλισμός' },
+  { key: 'returns', storage: 'romvos_pending_returns', label: 'Εκκρεμείς επιστροφές' },
+];
+const schedulingKeys = ['employees', 'vehicles', 'jobs', 'drafts', 'candidates', 'board'];
+const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+// Inspection only: no browser storage, network, imports or mutation of app state.
+export function inspectRomvosBackup(text) {
+  let backup;
+  try { backup = JSON.parse(text); }
+  catch { throw new Error('Το αρχείο δεν περιέχει έγκυρο JSON.'); }
+  if (!isObject(backup) || typeof backup.app !== 'string' || backup.app.trim().toLowerCase() !== 'romvos service') {
+    throw new Error('Το αρχείο δεν αναγνωρίζεται ως backup ROMVOS Service.');
+  }
+  const full = Object.hasOwn(backup, 'storage');
+  if (full ? !isObject(backup.storage) : !['employees', 'vehicles', 'jobs'].every(key => Array.isArray(backup[key]))) {
+    throw new Error('Η δομή του backup δεν είναι έγκυρη.');
+  }
+  const counts = {};
+  const inventory = [];
+  let populatedBoardCells = 0;
+  for (const module of modules) {
+    const source = full ? backup.storage : backup;
+    const field = full ? module.storage : module.key;
+    if (!Object.hasOwn(source, field)) {
+      counts[module.key] = null;
+      inventory.push({ ...module, count: null });
+      continue;
+    }
+    let value = source[field];
+    if (full && typeof value === 'string') {
+      try { value = JSON.parse(value); }
+      catch { throw new Error(`Το πεδίο «${module.label}» περιέχει μη έγκυρα δεδομένα.`); }
+    }
+    if (module.key === 'board') {
+      if (!isObject(value) || !Object.values(value).every(isObject)) {
+        throw new Error('Ο πίνακας συνεργείων του backup δεν είναι έγκυρος.');
+      }
+      for (const cell of Object.values(value)) {
+        for (const field of ['jobs', 'drafts', 'emps', 'vehs']) {
+          if (cell[field] !== undefined && (!Array.isArray(cell[field]) || !cell[field].every(id => typeof id === 'string'))) {
+            throw new Error('Οι αναθέσεις του πίνακα συνεργείων δεν είναι έγκυρες.');
+          }
+        }
+        if (['jobs', 'drafts', 'emps', 'vehs'].some(field => cell[field]?.length)) populatedBoardCells++;
+      }
+      counts.board = Object.keys(value).length;
+    } else {
+      if (!Array.isArray(value) || !value.every(isObject)) throw new Error(`Το πεδίο «${module.label}» δεν είναι έγκυρη λίστα εγγραφών.`);
+      counts[module.key] = value.length;
+    }
+    inventory.push({ ...module, count: counts[module.key] });
+  }
+  if (inventory.every(module => module.count === null)) throw new Error('Το αρχείο δεν περιέχει αναγνωρίσιμες ενότητες της εφαρμογής.');
+  const warnings = [];
+  if (schedulingKeys.some(key => counts[key] === null)) warnings.push('Δεν περιλαμβάνονται όλες οι ενότητες του προγράμματος σε αυτό το backup.');
+  const schedulingCount = schedulingKeys.filter(key => key !== 'board').reduce((sum, key) => sum + (counts[key] || 0), populatedBoardCells);
+  if (!schedulingCount) warnings.push('Δεν εντοπίστηκαν εργασίες, τεχνικοί, οχήματα ή αναθέσεις στο πρόγραμμα αυτού του backup.');
+  if (!full) warnings.push('Αυτό είναι παλαιότερο backup βασικών ενοτήτων. Για την τελική μεταφορά χρειάζεται πλήρες backup από το κουμπί BACKUP ΔΕΔΟΜΕΝΩΝ.');
+  const createdAt = typeof backup.createdAt === 'string' && Number.isFinite(Date.parse(backup.createdAt)) ? backup.createdAt : null;
+  return { format: full ? 'full' : 'legacy', createdAt, counts, inventory, populatedBoardCells, warnings };
+}

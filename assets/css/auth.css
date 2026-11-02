@@ -1,0 +1,25 @@
+.account-sidebar{margin:12px 5px;padding-top:12px;border-top:1px solid #334155;font-size:11px;color:#cbd5e1}
+.account-sidebar p{margin:0 0 6px;overflow-wrap:anywhere}
+.account-sidebar small{display:block;margin:7px 0;color:#94a3b8;line-height:1.4}
+.account-sidebar button{width:100%}
+:is(#accountDialog,#scheduleDialog){box-sizing:border-box;width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:28px;border:1px solid #dbe2ea;border-radius:18px;box-shadow:0 24px 80px #0f172a40;background:#fff;color:#0f172a;font-family:inherit}
+:is(#accountDialog,#scheduleDialog)::backdrop{background:#0f172ae8}
+:is(#accountDialog,#scheduleDialog) h2{margin:0 0 6px;font-size:23px}
+:is(#accountDialog,#scheduleDialog) .account-brand{font-weight:900;color:#2563eb;letter-spacing:.08em;margin-bottom:16px}
+:is(#accountDialog,#scheduleDialog) .account-intro{font-size:13px;color:#64748b;line-height:1.5}
+:is(#accountDialog,#scheduleDialog) form{display:grid;gap:14px;margin-top:20px}
+:is(#accountDialog,#scheduleDialog) label{display:grid;gap:6px;font-size:13px;font-weight:600}
+:is(#accountDialog,#scheduleDialog) input{box-sizing:border-box;width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:9px;font:inherit}
+:is(#accountDialog,#scheduleDialog) input:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+:is(#accountDialog,#scheduleDialog) button:disabled{opacity:.65;cursor:wait}
+:is(#accountDialog,#scheduleDialog) .account-status{font-size:13px;line-height:1.5;margin:18px 0;color:#334155}
+:is(#accountDialog,#scheduleDialog) .account-error{color:#b91c1c}
+:is(#accountDialog,#scheduleDialog) .account-details{background:#f1f5f9;border-radius:10px;padding:12px;font-size:12px;overflow-wrap:anywhere}
+:is(#accountDialog,#scheduleDialog) .account-details p{margin:4px 0}
+:is(#accountDialog,#scheduleDialog) .account-details code{user-select:all}
+:is(#accountDialog,#scheduleDialog) .account-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+:is(#accountDialog,#scheduleDialog) [hidden]{display:none!important}
+@media print{.account-sidebar,:is(#accountDialog,#scheduleDialog){display:none!important}}
+.backup-inspection{margin:18px 0;border-top:1px solid #e2e8f0;padding-top:14px;font-size:13px}
+.backup-inspection summary{cursor:pointer;font-weight:600;color:#1d4ed8}
+.backup-inspection-result{margin-top:12px;white-space:pre-line;line-height:1.6}

@@ -1,0 +1,17 @@
+export const AUTH_SETTINGS = Object.freeze({
+  projectId: 'romvos-service',
+  workspaceId: 'romvos',
+  // Enable after a team member has successfully signed in and been approved.
+  // This switch gates the interface; Firestore rules always protect cloud data.
+  requireSignIn: false,
+  // Public client configuration read from this project's Hosting init.json.
+  // This is not a credential granting access; the Firestore rules enforce that.
+  // Never put a service-account key or an account password in this file.
+  firebaseConfig: {
+    apiKey: 'AIzaSyCektDWisoQIwgh7Hjx8S8-JGkf6V364Vk',
+    authDomain: 'romvos-service.firebaseapp.com',
+    projectId: 'romvos-service',
+    messagingSenderId: '551919734193',
+    storageBucket: 'romvos-service.firebasestorage.app',
+  },
+});
