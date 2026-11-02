@@ -7,7 +7,7 @@ const storageScript = readFileSync(new URL('../assets/js/service-storage.js', im
 const bridgeScript = readFileSync(new URL('../assets/js/schedule-bridge.js', import.meta.url), 'utf8');
 const clone = value => JSON.parse(JSON.stringify(value));
 
-function fixture(initial = {}) {
+function fixture(initial = {}, options = {}) {
   const backing = new Map(Object.entries(initial));
   class Storage {
     data;
@@ -18,6 +18,7 @@ function fixture(initial = {}) {
     clear() { this.data.clear(); }
   }
   const win = new EventTarget();
+  win.ROMVOS_SHARED_ONLY = options.sharedOnly === true;
   const listeners = new Map();
   const elements = new Map();
   const doc = {
@@ -61,6 +62,16 @@ test('startup and viewer writes cannot change business lists in shared mode', ()
   app.storage.setItem('romvos_todo_v1', '[]');
   assert.equal(app.storage.getItem('romvos_todo_v1'), original);
   app.win.romvosServiceBeforeWrite = () => false;
+  app.storage.removeItem('romvos_todo_v1');
+  assert.equal(app.storage.getItem('romvos_todo_v1'), original);
+  assert.throws(() => app.storage.clear(), /εισαγωγής/);
+  assert.equal(app.saves(), 0);
+});
+
+test('required cloud mode blocks local business writes before sign-in finishes', () => {
+  const original = JSON.stringify([{ id: 'TODO-1', title: 'Last local copy' }]);
+  const app = fixture({ romvos_todo_v1: original }, { sharedOnly: true });
+  app.storage.setItem('romvos_todo_v1', '[]');
   app.storage.removeItem('romvos_todo_v1');
   assert.equal(app.storage.getItem('romvos_todo_v1'), original);
   assert.throws(() => app.storage.clear(), /εισαγωγής/);

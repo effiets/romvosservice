@@ -2117,17 +2117,17 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
 <span class="brand-title">ROMVOS</span>
 <span class="brand-subtitle">SERVICE</span>
 </div><nav><button class="active" data-tab="board">🧲 Πίνακας</button><button data-tab="reminders">📝 Υπενθυμίσεις <span id="reminderNavCount" class="nav-count" style="display:none">0</span></button><button data-tab="todo">✅ To Do <span id="todoNavCount" class="nav-count" style="display:none">0</span></button><button data-tab="orders">🛒 Παραγγελίες <span id="ordersNavCount" class="nav-count" style="display:none">0</span></button><button data-tab="emps">👷 Τεχνικοί</button><button data-tab="vehs">🚐 Οχήματα</button><button data-tab="clients">📒 Επαφές</button><button data-tab="incoming">📦 Εισερχόμενος Εξοπλισμός <span id="incomingNavCount" class="nav-count" style="display:none">0</span></button><button data-tab="returns">🔄 Εκκρεμείς Επιστροφές <span id="returnsNavCount" class="nav-count" style="display:none">0</span></button></nav><div style="margin:12px 5px;padding-top:10px;border-top:1px solid #334155">
-<button id="romvosBackupButton" class="btn" type="button" onclick="backupAllRomvosData()" style="width:100%;margin-bottom:6px;background:#166534;color:white;font-size:11px">💾 BACKUP ΔΕΔΟΜΕΝΩΝ</button>
-<button id="romvosRestoreButton" class="btn" type="button" onclick="document.getElementById('romvosRestoreFile').click()" style="width:100%;background:#e5e7eb;color:#111827;font-size:11px">📂 ΕΠΑΝΑΦΟΡΑ BACKUP</button>
+<button id="romvosBackupButton" class="btn" type="button" onclick="backupAllRomvosData()" style="width:100%;margin-bottom:6px;background:#166534;color:white;font-size:11px" hidden>💾 ΛΗΨΗ BACKUP ΚΟΙΝΗΣ ΒΑΣΗΣ</button>
+<button id="romvosRestoreButton" class="btn" type="button" onclick="document.getElementById('romvosRestoreFile').click()" style="width:100%;background:#e5e7eb;color:#111827;font-size:11px" hidden>📂 ΕΠΑΝΑΦΟΡΑ ΚΟΙΝΗΣ ΒΑΣΗΣ</button>
 <input id="romvosRestoreFile" type="file" accept=".json,application/json" style="display:none" onchange="restoreAllRomvosData(this)">
-<div id="romvosBackupHint" style="font-size:9px;color:#94a3b8;line-height:1.3;margin-top:6px">Κράτησε το αρχείο backup σε ασφαλές σημείο.</div>
+<div id="romvosBackupHint" style="font-size:9px;color:#94a3b8;line-height:1.3;margin-top:6px">Το backup θα είναι διαθέσιμο μόλις φορτωθεί η κοινή βάση.</div>
 </div>
 <div class="account-sidebar">
-  <p id="accountSummary">Τοπική λειτουργία</p>
+  <p id="accountSummary">Απαιτείται σύνδεση</p>
   <button id="accountOpen" class="btn light" type="button">Σύνδεση χρήστη</button>
-  <small id="accountStorageScope">Τα δεδομένα αποθηκεύονται σε αυτόν τον browser. Το κοινό πρόγραμμα ενεργοποιείται ξεχωριστά.</small>
-  <p id="scheduleSummary">Τοπικό πρόγραμμα</p>
-  <button id="scheduleOpen" class="btn light" type="button">Κοινό πρόγραμμα</button>
+  <small id="accountStorageScope">Όλα τα επιχειρησιακά στοιχεία αυτής της σελίδας αποθηκεύονται στην κοινή βάση.</small>
+  <p id="scheduleSummary">Κοινό πρόγραμμα · αναμονή σύνδεσης</p>
+  <button id="scheduleOpen" class="btn light" type="button">Κατάσταση κοινής βάσης</button>
 </div>
 </aside><main>
 <section id="board" class="section active"><div class="board-layout"><div class="board-pool"><div class="board-candidate-section"><div class="pool-head"><h3>Υποψήφιες εργασίες επόμενων ημερών</h3><button class="btn primary mini" onclick="addCandidateJob()">+ Υποψ.</button></div><div class="small">Τις μαζεύεις μέσα στη μέρα και τις σέρνεις στο συνεργείο όταν κλειδώσεις το πρόγραμμα. Μπορείς και να σύρεις εδώ πίσω μια εργασία από συνεργείο.</div><div id="poolCandidates" class="drop-pool candidate-pool" data-kind="candidate"></div></div><div id="poolJobs" class="drop-pool jobs-pool" data-kind="draft" style="display:none!important" aria-hidden="true"></div><div class="resource-bank"><h3>Διαθέσιμοι για την επιλεγμένη ημέρα</h3><div class="bank-label">👷 Τεχνικοί</div><div id="poolEmps" class="drop-pool resource-pool" data-kind="emp"></div><div class="bank-label">🚐 VAN</div><div id="poolVehs" class="drop-pool resource-pool" data-kind="veh"></div></div></div><div class="board-right"><div class="top"><div><h1>Πίνακας Κίνησης Συνεργείων</h1><div class="small">Σχεδιασμός ημέρας και επόμενων ημερών: εργασία, τεχνικοί και VAN.</div></div><div class="actions board-head-actions"><div class="board-week-nav"><button class="btn light" onclick="boardPrevWeek()">◀ Προηγούμενη</button><button class="btn light" onclick="boardNextWeek()">Επόμενη ▶</button></div><button class="btn primary" onclick="boardToday()">Σήμερα</button><button class="btn primary board-planner-fullscreen-open" type="button" onclick="openBoardPlannerFullscreen()" title="Πλήρης οθόνη προγραμματισμού">⛶ Πλήρης οθόνη</button><button class="btn danger board-planner-fullscreen-close" type="button" onclick="closeBoardPlannerFullscreen()" title="Κλείσιμο πλήρους οθόνης">✕ Κλείσιμο</button><button class="btn light" type="button" onclick="openDailyBoardView()">👁 Εργασίες ημέρας</button><div class="board-crew-tools"><select id="boardCrewSelect" title="Επίλεξε συνεργείο"><option value="1">Συνεργείο 1</option><option value="2">Συνεργείο 2</option><option value="3">Συνεργείο 3</option><option value="4">Συνεργείο 4</option><option value="5">Συνεργείο 5</option></select><button class="btn light" type="button" onclick="openCrewBoardView()" title="Προβολή μόνο του επιλεγμένου συνεργείου">👁 Προβολή</button><button class="btn light" type="button" onclick="printSelectedCrew()" title="Εκτύπωση μόνο του επιλεγμένου συνεργείου">🖨️ Εκτύπωση</button></div><button class="btn light" type="button" onclick="printMovementDay()">🖨️ Ημέρα</button><button class="btn light" type="button" onclick="printMovementBoard()">🖨️ Εβδομάδα / PDF</button></div></div><div class="availability-bar">
@@ -2539,6 +2539,7 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
 <div id="printArea"></div>
 <div id="confirmModal" class="modal"><div class="box" style="max-width:420px"><h3 id="confirmMsg" style="white-space:pre-line"></h3><div class="actions" style="margin-top:12px;justify-content:flex-end"><button class="btn light" onclick="confirmResolve(false)">Άκυρο</button><button class="btn danger" id="confirmOkBtn" onclick="confirmResolve(true)">Διαγραφή</button></div></div></div>
 <div id="clientHistModal" class="modal"><div class="box"><div class="row"><h2 id="clientHistTitle">Ιστορικό πελάτη</h2><button class="btn light" onclick="closeClientHist()">✕</button></div><div class="wrap" style="max-height:65vh"><table><thead><tr><th>Κωδικός</th><th>Ημ/νία</th><th>Είδος εργασίας</th><th>Κατάσταση</th></tr></thead><tbody id="clientHistBody"></tbody></table></div></div></div>
+<script>window.ROMVOS_SHARED_ONLY=true;</script>
 <script src="assets/js/service-storage.js"></script>
 <script src="assets/js/app.js"></script>
 <script src="assets/js/legacy-02.js"></script>
@@ -2827,7 +2828,7 @@ body.board-mode nav button{font-size:12px!important;padding:8px 9px!important;ma
 <dialog id="scheduleDialog" aria-labelledby="scheduleTitle" aria-describedby="scheduleIntro">
   <div class="account-brand">ROMVOS SERVICE</div>
   <h2 id="scheduleTitle">Κοινό πρόγραμμα ομάδας</h2>
-  <p id="scheduleIntro" class="account-intro">Κοινά για την ομάδα: πρόγραμμα, εργασίες, τεχνικοί, οχήματα, επαφές, To Do και αρχείο, υπενθυμίσεις, παραγγελίες, εισερχόμενος εξοπλισμός και επιστροφές.</p>
+  <p id="scheduleIntro" class="account-intro">Η εφαρμογή χρησιμοποιεί μόνο την κοινή βάση για πρόγραμμα, εργασίες, τεχνικούς, οχήματα, επαφές, To Do και αρχείο, υπενθυμίσεις, παραγγελίες, εισερχόμενο εξοπλισμό και επιστροφές.</p>
   <p id="scheduleStatus" class="account-status" role="status" aria-live="polite">Συνδέσου πρώτα με τον λογαριασμό της ομάδας σου.</p>
   <details class="backup-inspection">
     <summary>Προεπισκόπηση backup JSON</summary>
@@ -2843,6 +2844,7 @@ body.board-mode nav button{font-size:12px!important;padding:8px 9px!important;ma
     <button id="scheduleRetry" class="btn primary" type="button" hidden>Νέα προσπάθεια</button>
     <button id="scheduleRecovery" class="btn light" type="button" hidden>Λήψη μη αποθηκευμένης αλλαγής</button>
     <button id="scheduleReload" class="btn light" type="button" hidden>Φόρτωση τελευταίου προγράμματος</button>
+    <button id="scheduleAccount" class="btn light" type="button" hidden>Λογαριασμός / Αποσύνδεση</button>
     <button id="scheduleLocal" class="btn light" type="button" hidden>Επιστροφή στο τοπικό πρόγραμμα</button>
     <button id="scheduleClose" class="btn light" type="button">Κλείσιμο</button>
   </div>

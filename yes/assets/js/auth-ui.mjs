@@ -4,7 +4,7 @@ import { connectFirebase } from './auth-service.mjs';
 import { initializeScheduleUi } from './schedule-ui.mjs';
 import { initializeBackupPreview } from './backup-preview.mjs';
 
-const scheduling = initializeScheduleUi();
+const scheduling = initializeScheduleUi({ sharedOnly: AUTH_SETTINGS.requireSignIn });
 initializeBackupPreview();
 
 const byId = id => document.getElementById(id);
@@ -48,7 +48,7 @@ function setApproved(value, member) {
       ? { user: { uid: currentUser.uid, email: currentUser.email }, role: member.role, scheduling: service.scheduling }
       : {});
   }
-  sidebar.textContent = value ? currentUser.email : 'Τοπική λειτουργία';
+  sidebar.textContent = value ? currentUser.email : AUTH_SETTINGS.requireSignIn ? 'Απαιτείται σύνδεση' : 'Τοπική λειτουργία';
   openButton.textContent = value ? 'Λογαριασμός' : 'Σύνδεση χρήστη';
   syncAccess();
 }

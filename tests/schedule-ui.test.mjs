@@ -34,10 +34,12 @@ function fixture(role = 'owner', initial = {}, options = {}) {
   const storage = new Map(options.shared === false ? [] : [['romvos_shared_schedule_v1', 'true']]);
   let current = { ...baseState('Original'), ...initial };
   let editing = false;
+  let locked = false;
   let listener;
+  const remoteState = options.remoteTitle ? baseState(options.remoteTitle) : current;
   let remote = options.initialized === false
     ? { revision: 0, initialized: false, state: baseState(''), records: new Map() }
-    : { ...snapshot(1, 'Original'), state: structuredClone(current), records: scheduleRecords(current) };
+    : { ...snapshot(1, 'Original'), state: structuredClone(remoteState), records: scheduleRecords(remoteState) };
   const calls = [];
   const downloads = [];
   const alerts = [];
@@ -46,7 +48,7 @@ function fixture(role = 'owner', initial = {}, options = {}) {
     capture: () => structuredClone(current),
     apply: state => { current = structuredClone(state); },
     editorOpen: () => editing,
-    lock() {},
+    lock(value) { locked = value; },
   };
   const win = new EventTarget(); win.romvosScheduleBridge = bridge;
   win.backupAllRomvosData = () => legacyCalls.push('backup');
@@ -69,6 +71,7 @@ function fixture(role = 'owner', initial = {}, options = {}) {
     },
   };
   const ui = initializeScheduleUi({
+    sharedOnly: options.sharedOnly === true,
     download: (text, filename) => downloads.push({ text, filename }),
     now: () => new Date('2026-11-02T16:30:45.000Z'),
     alert: message => alerts.push(message),
@@ -79,6 +82,8 @@ function fixture(role = 'owner', initial = {}, options = {}) {
   return {
     storage, elements, calls, downloads, alerts, legacyCalls, win, bridge, document: doc,
     current: () => current,
+    locked: () => locked,
+    ui,
     edit: title => { current = baseState(title); },
     editService: patch => { Object.assign(current, structuredClone(patch)); },
     editing: value => { editing = value; },
@@ -172,10 +177,52 @@ test('viewer popup writes are denied and post-write legacy assignments are rever
   } finally { app.restore(); }
 });
 
-test('owner can initialize an empty shared service from a validated backup selection', async () => {
-  const app = fixture('owner', {}, { shared: false, initialized: false });
+test('required shared mode automatically loads cloud data and subsequent live updates', () => {
+  const app = fixture('editor', { candidates: [{ id: 'CAN-1', title: 'Local copy' }] },
+    { shared: false, sharedOnly: true, remoteTitle: 'Cloud copy' });
   try {
-    app.elements.get('scheduleOpen').click();
+    assert.equal(app.current().candidates[0].title, 'Cloud copy');
+    assert.equal(app.storage.get('romvos_shared_schedule_v1'), 'true');
+    assert.equal(app.elements.get('scheduleJoin').hidden, true);
+    assert.equal(app.elements.get('scheduleLocal').hidden, true);
+    assert.equal(app.elements.get('scheduleSummary').textContent, 'Κοινό πρόγραμμα · αποθηκευμένο');
+    assert.equal(app.locked(), false);
+    app.remote(2, 'Other user live change');
+    assert.equal(app.current().candidates[0].title, 'Other user live change');
+    app.elements.get('scheduleLocal').click();
+    assert.equal(app.storage.get('romvos_shared_schedule_v1'), 'true');
+  } finally { app.restore(); }
+});
+
+test('required shared mode blocks an editor while the common database is empty', () => {
+  const app = fixture('editor', {}, { shared: false, sharedOnly: true, initialized: false });
+  try {
+    assert.equal(app.ui.requiresAuth(), true);
+    assert.equal(app.locked(), true);
+    assert.equal(app.elements.get('scheduleDialog').open, true);
+    assert.equal(app.elements.get('scheduleClose').hidden, true);
+    assert.equal(app.elements.get('scheduleImportBackup').hidden, true);
+    assert.equal(app.win.romvosScheduleBeforeSave(), false);
+    assert.equal(app.win.romvosServiceBeforeWrite(), false);
+    const restoreInput = { value: 'selected' };
+    assert.equal(app.win.backupAllRomvosData(), null);
+    assert.equal(app.win.restoreAllRomvosData(restoreInput), false);
+    assert.equal(restoreInput.value, '');
+    assert.deepEqual(app.legacyCalls, []);
+    app.elements.get('scheduleClose').click();
+    assert.equal(app.elements.get('scheduleDialog').open, true);
+    let accountOpened = false;
+    app.document.getElementById('accountOpen').addEventListener('click', () => { accountOpened = true; });
+    app.elements.get('scheduleAccount').click();
+    assert.equal(accountOpened, true);
+    assert.equal(app.elements.get('scheduleDialog').open, false);
+  } finally { app.restore(); }
+});
+
+test('owner can initialize required shared mode once from a validated backup selection', async () => {
+  const app = fixture('owner', {}, { sharedOnly: true, initialized: false });
+  try {
+    assert.equal(app.storage.has('romvos_shared_schedule_v1'), false);
     const desired = { ...baseState('Imported'), clients: [{ id: 'CLI-1', name: 'Imported contact' }],
       board: { '2026-07-29#5': { jobs: [], drafts: [], emps: ['EMP-old'], vehs: [] } } };
     const records = scheduleRecords(desired);
@@ -191,6 +238,8 @@ test('owner can initialize an empty shared service from a validated backup selec
     assert.equal(app.current().clients[0].name, 'Imported contact');
     assert.equal(app.current().board['2026-07-29#5'].emps[0], 'EMP-old');
     assert.equal(app.storage.get('romvos_shared_schedule_v1'), 'true');
+    const preserved = JSON.parse(app.storage.get('romvos_local_schedule_before_cloud_v1'));
+    assert.equal(preserved.candidates[0].title, 'Original');
   } finally { app.restore(); }
 });
 
@@ -276,7 +325,7 @@ test('restore is cancelled if the cloud revision changes during confirmation', a
 });
 
 test('local mode delegates to the original local backup tools', () => {
-  const app = fixture('owner', {}, { shared: false, initialized: false });
+  const app = fixture('owner', {}, { shared: false, sharedOnly: false, initialized: false });
   try {
     app.win.backupAllRomvosData();
     app.win.restoreAllRomvosData({});

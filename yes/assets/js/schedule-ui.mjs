@@ -10,6 +10,7 @@ function browserDownload(text, filename) {
 
 export function initializeScheduleUi(options = {}) {
   const bridge = window.romvosScheduleBridge;
+  const sharedOnly = options.sharedOnly === true;
   const downloadFile = options.download || browserDownload;
   const now = options.now || (() => new Date());
   const confirmAction = options.confirm || (message => confirm(message));
@@ -53,6 +54,12 @@ export function initializeScheduleUi(options = {}) {
     const restoreButton = byId('romvosRestoreButton');
     const restoreInput = byId('romvosRestoreFile');
     const hint = byId('romvosBackupHint');
+    if (!shared && sharedOnly) {
+      backupButton.hidden = true; restoreButton.hidden = true;
+      backupButton.disabled = true; restoreButton.disabled = true; restoreInput.disabled = true;
+      hint.textContent = 'Το backup θα είναι διαθέσιμο στον owner μόλις φορτωθεί η κοινή βάση.';
+      return;
+    }
     if (!shared) {
       backupButton.hidden = false; restoreButton.hidden = false;
       backupButton.disabled = false; restoreButton.disabled = false; restoreInput.disabled = false;
@@ -82,19 +89,23 @@ export function initializeScheduleUi(options = {}) {
     }
   }
   function controls() {
-    byId('scheduleJoin').hidden = shared || !latest?.initialized || !member;
-    byId('scheduleInitialize').hidden = shared || !latest || latest.initialized || member?.role !== 'owner';
+    byId('scheduleJoin').hidden = sharedOnly || shared || !latest?.initialized || !member;
+    byId('scheduleInitialize').hidden = sharedOnly || shared || !latest || latest.initialized || member?.role !== 'owner';
     byId('scheduleImportBackup').hidden = shared || !selectedBackup || !latest || latest.initialized || member?.role !== 'owner';
     byId('scheduleRetry').hidden = !failed || !member || member.role === 'viewer' && Boolean(operation);
     byId('scheduleReload').hidden = !shared || !failed || !latest?.initialized;
     byId('scheduleRecovery').hidden = !member || !(localStorage.getItem(recoveryKey()) || localStorage.getItem(`${recoveryKey()}_previous`));
-    byId('scheduleLocal').hidden = !shared;
-    byId('scheduleClose').hidden = shared && (busy || failed || !view);
+    byId('scheduleAccount').hidden = !sharedOnly;
+    byId('scheduleLocal').hidden = sharedOnly || !shared;
+    byId('scheduleClose').hidden = sharedOnly ? !shared || busy || failed || !view : shared && (busy || failed || !view);
     dialog.querySelectorAll('button').forEach(button => { button.disabled = busy; });
-    bridge.lock(shared && (busy || failed || !view || !member));
-    byId('accountStorageScope').textContent = shared
+    bridge.lock(sharedOnly
+      ? !shared || busy || failed || !view || !member
+      : shared && (busy || failed || !view || !member));
+    byId('accountStorageScope').textContent = shared || sharedOnly
       ? 'Κοινά: πρόγραμμα, εργασίες, τεχνικοί, οχήματα, επαφές, To Do και αρχείο, υπενθυμίσεις, παραγγελίες, εισερχόμενος εξοπλισμός και επιστροφές.'
       : 'Τα δεδομένα αποθηκεύονται σε αυτόν τον browser. Το κοινό πρόγραμμα ενεργοποιείται ξεχωριστά.';
+    byId('scheduleOpen').textContent = sharedOnly ? 'Κατάσταση κοινής βάσης' : 'Κοινό πρόγραμμα';
     updateBackupControls();
   }
   function apply(snapshot) {
@@ -109,6 +120,7 @@ export function initializeScheduleUi(options = {}) {
     if (shared && latest?.initialized && !busy && !failed && !bridge.editorOpen() && (!view || latest.revision > view.revision)) apply(latest);
   }
   function rememberLocal() {
+    if (sharedOnly && localStorage.getItem(originalKey)) return;
     localStorage.setItem(originalKey, JSON.stringify(bridge.capture()));
   }
   function backupSnapshot(prefix, markDaily = false) {
@@ -229,11 +241,23 @@ export function initializeScheduleUi(options = {}) {
       latest = snapshot;
       updateBackupControls();
       if (!shared) {
+        if (sharedOnly && snapshot.initialized) {
+          enterShared(snapshot);
+          return;
+        }
         show(snapshot.initialized
           ? 'Υπάρχει κοινό πρόγραμμα. Η σύνδεση θα το φορτώσει εδώ. Το σημερινό τοπικό πρόγραμμα θα διατηρηθεί ξεχωριστά στον browser.'
           : member.role === 'owner'
-            ? 'Δεν έχει δημιουργηθεί κοινό πρόγραμμα. Η δημιουργία θα μεταφέρει όλες τις ενότητες του service από αυτόν τον browser. Επίλεξε πρώτα το σωστό, ενημερωμένο αντίγραφο.'
+            ? 'Δεν έχει δημιουργηθεί κοινή βάση. Επίλεξε μία φορά το σωστό JSON στην προεπισκόπηση και δημιούργησε το κοινό service.'
             : 'Ο υπεύθυνος της ομάδας χρειάζεται να δημιουργήσει πρώτα το κοινό πρόγραμμα.');
+        controls();
+      } else if (!snapshot.initialized && sharedOnly) {
+        shared = false;
+        view = undefined;
+        localStorage.removeItem(modeKey);
+        show(member.role === 'owner'
+          ? 'Δεν έχει δημιουργηθεί κοινή βάση. Επίλεξε μία φορά το σωστό JSON στην προεπισκόπηση και δημιούργησε το κοινό service.'
+          : 'Ο υπεύθυνος της ομάδας χρειάζεται να δημιουργήσει πρώτα το κοινό πρόγραμμα.');
         controls();
       } else if (!snapshot.initialized) onFailure(new Error('Shared schedule missing'));
       else if (!view) {
@@ -293,7 +317,7 @@ export function initializeScheduleUi(options = {}) {
 
   window.romvosScheduleBeforeSave = () => {
     if (bridge.isApplying?.()) return false;
-    if (!shared) return true;
+    if (!shared) return !sharedOnly;
     if (!member || busy || failed || !view) return false;
     if (member.role === 'viewer') {
       const changed = scheduleChanges(view.records, scheduleRecords(bridge.capture())).length;
@@ -307,7 +331,7 @@ export function initializeScheduleUi(options = {}) {
   };
   window.romvosServiceBeforeWrite = () => {
     if (bridge.isApplying?.()) return false;
-    if (!shared) return true;
+    if (!shared) return !sharedOnly;
     if (!member || busy || failed || !view) return false;
     if (member.role === 'viewer') {
       bridge.apply(view.state);
@@ -321,8 +345,19 @@ export function initializeScheduleUi(options = {}) {
   };
   // Preserve the original all-localStorage tools in local mode. In shared mode
   // the same sidebar buttons use only the acknowledged Firestore snapshot.
-  window.backupAllRomvosData = (...args) => shared ? exportSharedBackup() : legacyBackup?.(...args);
-  window.restoreAllRomvosData = input => shared ? restoreSharedBackup(input) : legacyRestore?.(input);
+  window.backupAllRomvosData = (...args) => {
+    if (shared) return exportSharedBackup();
+    if (!sharedOnly) return legacyBackup?.(...args);
+    alertAction('Περίμενε να φορτωθεί η κοινή βάση. Δεν δημιουργείται τοπικό backup εργασίας.');
+    return null;
+  };
+  window.restoreAllRomvosData = input => {
+    if (shared) return restoreSharedBackup(input);
+    if (!sharedOnly) return legacyRestore?.(input);
+    if (input) input.value = '';
+    alertAction('Η κοινή βάση δεν έχει δημιουργηθεί ακόμη. Ο owner πρέπει να χρησιμοποιήσει την εφάπαξ εισαγωγή μέσα από την Κατάσταση κοινής βάσης.');
+    return false;
+  };
   window.addEventListener('romvos:schedule-saved', () => {
     if (shared && !saveQueued) { saveQueued = true; queueMicrotask(save); }
   });
@@ -333,17 +368,27 @@ export function initializeScheduleUi(options = {}) {
   document.addEventListener('focusout', () => queueMicrotask(flush));
   document.addEventListener('input', () => queueMicrotask(flush));
   document.addEventListener('click', () => queueMicrotask(flush));
-  dialog.addEventListener('cancel', event => { if (shared && (busy || failed || !view)) event.preventDefault(); });
+  dialog.addEventListener('cancel', event => {
+    if ((sharedOnly && (!shared || busy || failed || !view)) || (shared && (busy || failed || !view))) event.preventDefault();
+  });
   byId('scheduleOpen').addEventListener('click', () => {
     if (!member) { byId('accountOpen').click(); return; }
     if (bridge.editorOpen()) { alert('Ολοκλήρωσε ή κλείσε πρώτα την ανοιχτή επεξεργασία.'); return; }
     open();
     if (!unsubscribe) watch();
   });
-  byId('scheduleClose').addEventListener('click', () => dialog.close());
+  byId('scheduleClose').addEventListener('click', () => {
+    if (sharedOnly && (!shared || busy || failed || !view)) return;
+    dialog.close();
+  });
+  byId('scheduleAccount').addEventListener('click', () => {
+    if (busy) return;
+    dialog.close();
+    byId('accountOpen').click();
+  });
   byId('scheduleJoin').addEventListener('click', () => { if (latest?.initialized) enterShared(latest); });
   byId('scheduleInitialize').addEventListener('click', async () => {
-    if (member?.role !== 'owner' || latest?.initialized || busy) return;
+    if (sharedOnly || member?.role !== 'owner' || latest?.initialized || busy) return;
     try {
       rememberLocal();
       const desired = bridge.capture();
@@ -391,7 +436,7 @@ export function initializeScheduleUi(options = {}) {
     link.click(); setTimeout(() => URL.revokeObjectURL(url), 1500);
   });
   byId('scheduleLocal').addEventListener('click', () => {
-    if (busy) return;
+    if (sharedOnly || busy) return;
     const original = localStorage.getItem(originalKey);
     if (!original) return;
     unsubscribe?.(); unsubscribe = undefined; ++generation;
@@ -402,17 +447,17 @@ export function initializeScheduleUi(options = {}) {
     controls(); dialog.close();
     window.dispatchEvent(new Event('romvos:schedule-mode'));
   });
-  if (shared) { bridge.lock(true); badge.textContent = 'Κοινό πρόγραμμα · αναμονή σύνδεσης'; }
+  if (shared || sharedOnly) { bridge.lock(true); badge.textContent = 'Κοινό πρόγραμμα · αναμονή σύνδεσης'; }
   updateBackupControls();
   return {
-    requiresAuth: () => shared,
+    requiresAuth: () => sharedOnly || shared,
     membership({ user, role, scheduling }) {
       unsubscribe?.(); unsubscribe = undefined; ++generation;
       busy = false; failed = false; operation = undefined;
       member = user ? { ...user, role } : undefined;
       service = scheduling;
       view = undefined;
-      if (shared && member) { open(); watch(); }
+      if ((shared || sharedOnly) && member) { open(); watch(); }
       else controls();
     },
   };

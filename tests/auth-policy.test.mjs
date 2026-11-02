@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { authErrorMessage, memberState, validateFirebaseConfig } from '../assets/js/auth-policy.mjs';
+import { AUTH_SETTINGS } from '../assets/js/auth-config.mjs';
 
 const snapshot = (data, fromCache = false) => ({
   metadata: { fromCache }, exists: () => data !== null, data: () => data,
@@ -36,4 +37,9 @@ test('Firebase configuration must belong to the intended project', () => {
   for (const invalid of [null, {}, { ...config, projectId: 'another-project' }, { ...config, apiKey: '' }]) {
     assert.throws(() => validateFirebaseConfig(invalid, 'romvos-service'), { code: 'romvos/config' });
   }
+});
+
+test('the production service requires approved sign-in for the shared database', () => {
+  assert.equal(AUTH_SETTINGS.requireSignIn, true);
+  assert.equal(AUTH_SETTINGS.workspaceId, 'romvos');
 });

@@ -15,7 +15,8 @@
   // Legacy popup controllers read lists from storage directly. Keep this tab's
   // baseline isolated from local writes in other tabs; cloud snapshots update it.
   const values = new Map(Object.entries(startupValues));
-  const shared = () => original.get.call(localStorage, 'romvos_shared_schedule_v1') === 'true';
+  const shared = () => window.ROMVOS_SHARED_ONLY === true
+    || original.get.call(localStorage, 'romvos_shared_schedule_v1') === 'true';
   function allow(key, value) {
     if (!shared()) return true;
     // This script runs before the legacy startup migrations. An existing cloud

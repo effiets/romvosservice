@@ -23,9 +23,9 @@ This updates the hosting page and assets without changing JSON backups. Backup J
 
 ## Current storage
 
-Email/password sign-in and team membership checking are available from the sidebar. **Κοινό πρόγραμμα** activates shared service data after the matching Firestore rules are published. The current implementation covers the crew board, jobs, drafts, candidates, technicians, vehicles, contacts, To Do/archive, reminders, orders, incoming equipment, and returns. Local mode is still available until migration is finalized. Opening the app no longer clears saved jobs and crew assignments.
+Email/password sign-in and approved team membership are required. After approval, every browser automatically loads the single Firestore service; there is no selectable local working mode. The shared implementation covers the crew board, jobs, drafts, candidates, technicians, vehicles, contacts, To Do/archive, reminders, orders, incoming equipment, and returns. Personal display preferences and data belonging to the other HTML applications remain local.
 
-This expansion uses schema version 3 and has not yet been deployed or verified with live multi-user writes. It stores one document for each of the 13 service modules, plus metadata, so the validated initial backup fits in one atomic transaction. Publish the matching rules and application together before testing the expanded shared workflow. Existing schema 1 scheduling data remains readable; the first schema 3 save supersedes it without a risky bulk deletion. Local lists are preserved separately before joining.
+This expansion uses schema version 3. It stores one document for each of the 13 service modules, plus metadata, so the validated initial backup fits in one atomic transaction. Existing schema 1 scheduling data remains readable; the first schema 3 save supersedes it without a risky bulk deletion. A browser's pre-migration local lists are preserved only as recovery data and are never used instead of the common database.
 
 See [Firebase setup](docs/firebase-setup.md) for the console steps and how to test a team account before requiring sign-in. The public Firebase client configuration is in `assets/js/auth-config.mjs`. Account passwords and service-account keys must never be added to the app.
 
@@ -39,10 +39,9 @@ JSON files are historical snapshots. Current browser data may be newer. No JSON 
 
 ## Remaining implementation
 
-1. As owner, select the final JSON in **Κοινό πρόγραμμα**, review the counts, and create the empty shared service. The schema 3 rules and application are already published. Keep the original JSON unchanged until restoration has been verified.
-2. Join the common service once from each of the other two users' browsers.
+1. If the common database is empty, the owner selects the final JSON in **Κατάσταση κοινής βάσης**, reviews the counts, and creates the shared service once. Keep the original JSON unchanged until the live verification is complete.
+2. The other two users only refresh and sign in; the common service loads automatically and they must not upload the JSON again.
 3. Verify the workflow with the three team accounts on at least two devices: live updates, simultaneous edits, refresh, failed saves, and role enforcement.
-4. Validate the owner-only shared JSON download and controlled restore in the live workflow. The browser provides a one-click end-of-day download and automatically creates a pre-restore copy; unattended scheduled off-device backups would require a separate server task.
-5. After validation, require sign-in and move the team to the single shared workflow. Keep daily files in a second location and document the recovery procedure.
+4. Validate the owner-only shared JSON download in the live workflow. Keep daily files in a second location; unattended scheduled off-device backups would require a separate server task.
 
 Keep the current appearance and scheduling workflow throughout. A fresh export from the browser holding the current records will be needed at migration time.
