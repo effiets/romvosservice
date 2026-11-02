@@ -39,10 +39,10 @@ JSON files are historical snapshots. Current browser data may be newer. No JSON 
 
 ## Remaining implementation
 
-1. Publish the schema 3 Firestore rules and application together. The validated import is ready locally, preserves all 879 service records, and exposes the historical fifth crew in the existing interface.
-2. As owner, select the final JSON in **Κοινό πρόγραμμα**, review the counts, and create the empty shared service. Keep the original JSON unchanged until restoration has been verified.
+1. As owner, select the final JSON in **Κοινό πρόγραμμα**, review the counts, and create the empty shared service. The schema 3 rules and application are already published. Keep the original JSON unchanged until restoration has been verified.
+2. Join the common service once from each of the other two users' browsers.
 3. Verify the workflow with the three team accounts on at least two devices: live updates, simultaneous edits, refresh, failed saves, and role enforcement.
-4. Add complete shared-service JSON export/restore and an independent end-of-day backup process. Verify a restoration rehearsal against a separate test target rather than relying on a browser's local copy.
-5. After validation, require sign-in and move the team to the single shared workflow. Document the daily backup check and recovery procedure.
+4. Validate the owner-only shared JSON download and controlled restore in the live workflow. The browser provides a one-click end-of-day download and automatically creates a pre-restore copy; unattended scheduled off-device backups would require a separate server task.
+5. After validation, require sign-in and move the team to the single shared workflow. Keep daily files in a second location and document the recovery procedure.
 
 Keep the current appearance and scheduling workflow throughout. A fresh export from the browser holding the current records will be needed at migration time.

@@ -2117,10 +2117,10 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
 <span class="brand-title">ROMVOS</span>
 <span class="brand-subtitle">SERVICE</span>
 </div><nav><button class="active" data-tab="board">🧲 Πίνακας</button><button data-tab="reminders">📝 Υπενθυμίσεις <span id="reminderNavCount" class="nav-count" style="display:none">0</span></button><button data-tab="todo">✅ To Do <span id="todoNavCount" class="nav-count" style="display:none">0</span></button><button data-tab="orders">🛒 Παραγγελίες <span id="ordersNavCount" class="nav-count" style="display:none">0</span></button><button data-tab="emps">👷 Τεχνικοί</button><button data-tab="vehs">🚐 Οχήματα</button><button data-tab="clients">📒 Επαφές</button><button data-tab="incoming">📦 Εισερχόμενος Εξοπλισμός <span id="incomingNavCount" class="nav-count" style="display:none">0</span></button><button data-tab="returns">🔄 Εκκρεμείς Επιστροφές <span id="returnsNavCount" class="nav-count" style="display:none">0</span></button></nav><div style="margin:12px 5px;padding-top:10px;border-top:1px solid #334155">
-<button class="btn" type="button" onclick="backupAllRomvosData()" style="width:100%;margin-bottom:6px;background:#166534;color:white;font-size:11px">💾 BACKUP ΔΕΔΟΜΕΝΩΝ</button>
-<button class="btn" type="button" onclick="document.getElementById('romvosRestoreFile').click()" style="width:100%;background:#e5e7eb;color:#111827;font-size:11px">📂 ΕΠΑΝΑΦΟΡΑ BACKUP</button>
+<button id="romvosBackupButton" class="btn" type="button" onclick="backupAllRomvosData()" style="width:100%;margin-bottom:6px;background:#166534;color:white;font-size:11px">💾 BACKUP ΔΕΔΟΜΕΝΩΝ</button>
+<button id="romvosRestoreButton" class="btn" type="button" onclick="document.getElementById('romvosRestoreFile').click()" style="width:100%;background:#e5e7eb;color:#111827;font-size:11px">📂 ΕΠΑΝΑΦΟΡΑ BACKUP</button>
 <input id="romvosRestoreFile" type="file" accept=".json,application/json" style="display:none" onchange="restoreAllRomvosData(this)">
-<div style="font-size:9px;color:#94a3b8;line-height:1.3;margin-top:6px">Κράτησε το αρχείο backup σε ασφαλές σημείο.</div>
+<div id="romvosBackupHint" style="font-size:9px;color:#94a3b8;line-height:1.3;margin-top:6px">Κράτησε το αρχείο backup σε ασφαλές σημείο.</div>
 </div>
 <div class="account-sidebar">
   <p id="accountSummary">Τοπική λειτουργία</p>

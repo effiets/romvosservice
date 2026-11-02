@@ -7,6 +7,11 @@ yarn-error.log*
 firebase-debug.log*
 firebase-debug.*.log*
 
+# macOS metadata and accidental Finder duplicate scripts in hosting output
+.DS_Store
+yes/assets/js/* 2.js
+yes/assets/js/* 2.mjs
+
 # Firebase cache
 .firebase/
 

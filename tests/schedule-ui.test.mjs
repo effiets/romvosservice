@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { initializeScheduleUi } from '../assets/js/schedule-ui.mjs';
 import { scheduleRecords } from '../assets/js/schedule-model.mjs';
+import { createSharedServiceBackup, prepareServiceBackup } from '../assets/js/backup-service.mjs';
 
 const baseState = title => ({ employees: [], vehicles: [], jobs: [], drafts: [],
   candidates: [{ id: 'CAN-1', title }], board: {}, clients: [], reminders: [], todos: [],
   todoArchive: [], orders: [], incoming: [], returns: [] });
 const snapshot = (revision, title) => {
   const state = baseState(title);
-  return { revision, initialized: true, state, records: scheduleRecords(state) };
+  return { revision, initialized: true, schemaVersion: 3, state, records: scheduleRecords(state),
+    operationId: `snapshot-${revision}`.padEnd(36, '0') };
 };
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -37,6 +39,9 @@ function fixture(role = 'owner', initial = {}, options = {}) {
     ? { revision: 0, initialized: false, state: baseState(''), records: new Map() }
     : { ...snapshot(1, 'Original'), state: structuredClone(current), records: scheduleRecords(current) };
   const calls = [];
+  const downloads = [];
+  const alerts = [];
+  const legacyCalls = [];
   const bridge = {
     capture: () => structuredClone(current),
     apply: state => { current = structuredClone(state); },
@@ -44,6 +49,8 @@ function fixture(role = 'owner', initial = {}, options = {}) {
     lock() {},
   };
   const win = new EventTarget(); win.romvosScheduleBridge = bridge;
+  win.backupAllRomvosData = () => legacyCalls.push('backup');
+  win.restoreAllRomvosData = () => legacyCalls.push('restore');
   Object.assign(globalThis, {
     window: win, document: doc,
     localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
@@ -55,15 +62,22 @@ function fixture(role = 'owner', initial = {}, options = {}) {
     async commit(action) {
       calls.push(action);
       if (action.expectedRevision !== remote.revision) throw Object.assign(new Error('Conflict'), { code: 'romvos/conflict' });
-      remote = { revision: remote.revision + 1, initialized: true, state: action.desired, records: scheduleRecords(action.desired) };
+      remote = { revision: remote.revision + 1, initialized: true, schemaVersion: 3,
+        state: action.desired, records: scheduleRecords(action.desired), operationId: action.operationId };
       listener(remote);
       return remote.revision;
     },
   };
-  const ui = initializeScheduleUi();
+  const ui = initializeScheduleUi({
+    download: (text, filename) => downloads.push({ text, filename }),
+    now: () => new Date('2026-11-02T16:30:45.000Z'),
+    alert: message => alerts.push(message),
+    confirm: message => typeof options.confirm === 'function' ? options.confirm(message) : options.confirm !== false,
+    prompt: () => options.prompt ?? 'ΕΠΑΝΑΦΟΡΑ',
+  });
   ui.membership({ user: { uid: 'owner', email: 'owner@example.test' }, role, scheduling: service });
   return {
-    storage, elements, calls, win, bridge, document: doc,
+    storage, elements, calls, downloads, alerts, legacyCalls, win, bridge, document: doc,
     current: () => current,
     edit: title => { current = baseState(title); },
     editService: patch => { Object.assign(current, structuredClone(patch)); },
@@ -177,5 +191,96 @@ test('owner can initialize an empty shared service from a validated backup selec
     assert.equal(app.current().clients[0].name, 'Imported contact');
     assert.equal(app.current().board['2026-07-29#5'].emps[0], 'EMP-old');
     assert.equal(app.storage.get('romvos_shared_schedule_v1'), 'true');
+  } finally { app.restore(); }
+});
+
+test('owner backup exports the acknowledged cloud snapshot and marks its revision', () => {
+  const app = fixture();
+  try {
+    app.edit('Unsaved browser value');
+    const result = app.win.backupAllRomvosData();
+    assert(result);
+    assert.equal(app.downloads.length, 1);
+    const prepared = prepareServiceBackup(app.downloads[0].text);
+    assert.equal(prepared.state.candidates[0].title, 'Original');
+    assert.match(app.downloads[0].filename, /REV-1\.json$/);
+    assert.equal(JSON.parse(app.storage.get('romvos_last_shared_backup_v1')).revision, 1);
+    assert.match(app.elements.get('romvosBackupHint').textContent, /Τελευταίο backup/);
+  } finally { app.restore(); }
+});
+
+test('editor cannot use shared backup or restore controls', async () => {
+  const app = fixture('editor');
+  try {
+    assert.equal(app.elements.get('romvosBackupButton').hidden, true);
+    assert.equal(app.win.backupAllRomvosData(), null);
+    const input = { files: [{ name: 'backup.json', size: 10, text: async () => '{}' }], value: 'selected' };
+    assert.equal(await app.win.restoreAllRomvosData(input), false);
+    assert.equal(app.downloads.length, 0);
+    assert.equal(app.calls.length, 0);
+    assert.equal(input.value, '');
+  } finally { app.restore(); }
+});
+
+test('owner restore downloads the current server state then commits atomically', async () => {
+  const app = fixture();
+  try {
+    const desired = { ...baseState('Restored'), clients: [{ id: 'CLI-1', name: 'Restored contact' }] };
+    const payload = createSharedServiceBackup({ state: desired, revision: 4,
+      operationId: 'restore-source'.padEnd(36, '0'), createdAt: '2026-11-01T16:00:00.000Z',
+      createdBy: { uid: 'owner', email: 'owner@example.test' } });
+    const text = JSON.stringify(payload);
+    const input = { files: [{ name: 'ROMVOS_SHARED_BACKUP.json', size: text.length, text: async () => text }], value: 'selected' };
+    assert.equal(await app.win.restoreAllRomvosData(input), true);
+    assert.equal(app.calls.length, 1);
+    assert.equal(app.calls[0].expectedRevision, 1);
+    assert.equal(app.calls[0].changes.length, 2);
+    assert.equal(app.current().candidates[0].title, 'Restored');
+    assert.equal(app.current().clients[0].name, 'Restored contact');
+    assert.match(app.downloads[0].filename, /^ROMVOS_BEFORE_RESTORE_/);
+    assert(app.storage.has('romvos_pre_restore_shared_backup_v1'));
+    assert.equal(input.value, '');
+  } finally { app.restore(); }
+});
+
+test('cancelled restore leaves the shared database unchanged', async () => {
+  const app = fixture('owner', {}, { confirm: false });
+  try {
+    const desired = baseState('Cancelled restore');
+    const payload = createSharedServiceBackup({ state: desired, revision: 2,
+      operationId: 'cancelled'.padEnd(36, '0'), createdAt: '2026-11-01T16:00:00.000Z',
+      createdBy: { uid: 'owner', email: 'owner@example.test' } });
+    const text = JSON.stringify(payload);
+    const input = { files: [{ name: 'backup.json', size: text.length, text: async () => text }], value: 'selected' };
+    assert.equal(await app.win.restoreAllRomvosData(input), false);
+    assert.equal(app.calls.length, 0);
+    assert.equal(app.downloads.length, 0);
+  } finally { app.restore(); }
+});
+
+test('restore is cancelled if the cloud revision changes during confirmation', async () => {
+  let app;
+  app = fixture('owner', {}, { confirm: () => { app.remote(2, 'Concurrent update'); return true; } });
+  try {
+    const desired = baseState('Stale restore');
+    const payload = createSharedServiceBackup({ state: desired, revision: 2,
+      operationId: 'stale-restore'.padEnd(36, '0'), createdAt: '2026-11-01T16:00:00.000Z',
+      createdBy: { uid: 'owner', email: 'owner@example.test' } });
+    const text = JSON.stringify(payload);
+    const input = { files: [{ name: 'backup.json', size: text.length, text: async () => text }], value: 'selected' };
+    assert.equal(await app.win.restoreAllRomvosData(input), false);
+    assert.equal(app.calls.length, 0);
+    assert.equal(app.downloads.length, 0);
+    assert.equal(app.current().candidates[0].title, 'Concurrent update');
+  } finally { app.restore(); }
+});
+
+test('local mode delegates to the original local backup tools', () => {
+  const app = fixture('owner', {}, { shared: false, initialized: false });
+  try {
+    app.win.backupAllRomvosData();
+    app.win.restoreAllRomvosData({});
+    assert.deepEqual(app.legacyCalls, ['backup', 'restore']);
+    assert.equal(app.downloads.length, 0);
   } finally { app.restore(); }
 });
