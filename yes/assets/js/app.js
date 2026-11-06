@@ -17,6 +17,12 @@ function workState(j){
 }
 function workStateMatches(j,key){if(!key)return true;let w=workState(j);if(key==='inprogress')return j.status==='Σε εξέλιξη';return w.key===key}
 function stateBadge(j){let w=workState(j),manual=(j.status&&j.status!=='Προγραμματισμένη'&&!['Ολοκληρώθηκε','Ακυρώθηκε','Σε αναμονή'].includes(j.status))?`<div class="small">${esc(j.status)}</div>`:'';return `<span class="badge ${w.cls}">${w.label}</span>${manual}`}
+function jobDetailsHtml(j,className='job-visible-detail'){
+ let parts=[],task=String(j?.task||'').trim(),notes=String(j?.notes||'').trim();
+ if(task)parts.push(`<div><b>Περιγραφή:</b> ${esc(task)}</div>`);
+ if(notes)parts.push(`<div class="job-detail-notes"><b>Σημειώσεις:</b> ${esc(notes)}</div>`);
+ return parts.length?`<div class="${className}">${parts.join('')}</div>`:'';
+}
 
 function setBoardMode(on){document.body.classList.toggle('board-mode',!!on)}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));$(b.dataset.tab).classList.add('active');setBoardMode(b.dataset.tab==='board');render();if(b.dataset.tab==='board')renderBoard()});
@@ -97,18 +103,28 @@ function sendTodayViber(){
  viberSend([`📅 Πρόγραμμα ${dateStr}`,...lines].join('\n'),`Πρόγραμμα ${dateStr} (${T.length} εργασίες)`);
 }
 function markDone(id){let j=J.find(x=>x.id===id);if(j){j.status='Ολοκληρώθηκε';save();render()}}
-function render(){renderDash();renderJobs();renderWeek();renderLists();renderEmpStats();renderClients();refreshClientList()}
+function render(){renderDash();renderDashboardJobDetails();renderJobs();renderWeek();renderLists();renderEmpStats();renderClients();refreshClientList()}
 function renderDash(){let d=today(),T=J.filter(j=>j.date===d).sort((a,b)=>a.start.localeCompare(b.start)),AE=E.filter(e=>e.active!==false&&!empOnLeave(e,d)),AV=V.filter(v=>v.active!==false),BE=new Set(J.filter(nowBusy).flatMap(j=>j.employeeIds||[])),BV=new Set(J.filter(nowBusy).map(j=>j.vehicleId).filter(Boolean)),ongoingAll=J.filter(j=>j.status==='Σε εξέλιξη'),carried=ongoingAll.filter(j=>j.date&&j.date<d).sort((a,b)=>a.date.localeCompare(b.date)),pr={'Επείγουσα':0,'Υψηλή':1,'Κανονική':2},queue=J.filter(j=>!j.date).sort((a,b)=>(pr[a.priority]??2)-(pr[b.priority]??2)||a.id.localeCompare(b.id));$('dateLabel').textContent=new Date().toLocaleDateString('el-GR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});$('k1').textContent=J.filter(j=>workState(j).key==='today').length;$('k7').textContent=J.filter(j=>workState(j).key==='expired').length;$('k8').textContent=J.filter(j=>workState(j).key==='active').length;$('k9').textContent=J.filter(j=>workState(j).key==='waiting').length;$('k10').textContent=J.filter(j=>workState(j).key==='completed').length;$('k2').textContent=ongoingAll.length;$('k3').textContent=AE.filter(e=>!BE.has(e.id)).length;$('k4').textContent=AV.filter(v=>!v.outOfService&&!BV.has(v.id)).length;$('k6').textContent=queue.length;let i=T.reduce((s,j)=>s+Number(j.income||0),0),e=T.reduce((s,j)=>s+Number(j.expense||0),0);$('k5').textContent=eur(i-e);$('todayBody').innerHTML=T.length?T.map(j=>`<tr><td><b>${j.start}–${j.end}</b></td><td>${esc(j.client||'—')}</td><td>${esc(j.type||j.task||'—')}</td><td>${esc(names(j.employeeIds))}</td><td>${esc(veh(j.vehicleId))}</td><td>${stateBadge(j)}</td><td><button class="btn light" onclick="editJob('${j.id}')">✏️</button></td></tr>`).join(''):'<tr><td colspan="7">Δεν υπάρχουν εργασίες σήμερα.</td></tr>';$('empNow').innerHTML=AE.length?AE.map(e=>`<div class="res"><span>${esc(e.name)}</span><span class="${BE.has(e.id)?'bad':'ok'}">${BE.has(e.id)?'● Απασχολημένος':'● Διαθέσιμος'}</span></div>`).join(''):'Δεν υπάρχουν τεχνικοί.';$('vehNow').innerHTML=AV.length?AV.map(v=>v.outOfService?`<div class="res"><span>${esc(v.plate+(v.model?' • '+v.model:''))}<span class="vehicle-problem-dash">⚠️ ${esc(v.problem||'Χωρίς περιγραφή προβλήματος')}</span></span><span class="bad">● ΑΚΙΝΗΤΟ</span></div>`:`<div class="res"><span>${esc(v.plate+(v.model?' • '+v.model:''))}</span><span class="${BV.has(v.id)?'bad':'ok'}">${BV.has(v.id)?'● Σε χρήση':'● Διαθέσιμο'}</span></div>`).join(''):'Δεν υπάρχουν οχήματα.';let R=J.filter(j=>j.reminder&&j.status!=='Ολοκληρώθηκε').sort((a,b)=>a.reminder.localeCompare(b.reminder)).slice(0,6);$('remNow').innerHTML=R.length?R.map(j=>`<div class="res"><span>${esc(j.client||j.type)}</span><span style="display:flex;gap:6px;align-items:center"><b>${j.reminder}</b><button class="btn light" style="padding:2px 6px;font-size:10px" title="Ολοκληρώθηκε" onclick="markDone('${j.id}')">✓</button></span></div>`).join(''):'Καμία ενεργή υπενθύμιση.';$('carriedPanel').style.display=carried.length?'block':'none';$('carriedBody').innerHTML=carried.length?carried.map(j=>`<tr class="overdue"><td>${j.date}</td><td>${esc(j.client||'—')}</td><td>${esc(names(j.employeeIds))}</td><td>${esc(veh(j.vehicleId))}</td><td><div class="actions"><button class="btn light" onclick="editJob('${j.id}')">✏️</button><button class="btn good" onclick="markDone('${j.id}')">✓ Ολοκλήρωση</button></div></td></tr>`).join(''):'';$('queueBody').innerHTML=queue.length?queue.map(j=>`<tr class="queue"><td><b>${esc(j.client||'—')}</b></td><td>${esc(j.type||j.task||'—')}</td><td><span class="pill ${j.priority==='Επείγουσα'?'hi':j.priority==='Υψηλή'?'mid':'lo'}">${esc(j.priority||'Κανονική')}</span></td><td><div class="actions"><button class="btn primary" onclick="scheduleJob('${j.id}')">📅 Προγραμματισμός</button><button class="btn light" onclick="editJob('${j.id}')">✏️</button><button class="btn danger" onclick="delJob('${j.id}')">🗑️</button></div></td></tr>`).join(''):'<tr><td colspan="4">Δεν υπάρχουν εργασίες σε ουρά.</td></tr>'}
+function renderDashboardJobDetails(){
+ const body=$('todayBody');
+ if(!body)return;
+ const jobs=J.filter(j=>j.date===today()).sort((a,b)=>a.start.localeCompare(b.start));
+ const rows=body.querySelectorAll('tr');
+ jobs.forEach((j,index)=>{
+  const cell=rows[index]?.children?.[2];
+  if(cell)cell.innerHTML=`<div>${esc(j.type||'—')}</div>${jobDetailsHtml(j,'job-dashboard-detail')}`;
+ });
+}
 let jobSort={key:'date',dir:-1};
 function sortJobs(key){if(jobSort.key===key)jobSort.dir*=-1;else{jobSort.key=key;jobSort.dir=1}renderJobs()}
 function updateSortIndicators(){['code','date','client','status'].forEach(k=>{let el=$('th_'+k);if(el)el.textContent=el.dataset.label+(jobSort.key===k?(jobSort.dir>0?' ▲':' ▼'):'')})}
 function clearFilters(){$('search').value='';$('jfStatus').value='';$('jfEmp').value='';$('jfFrom').value='';$('jfTo').value='';$('jfQueue').value='';renderJobs()}
 function renderJobs(){let empSel=$('jfEmp'),curEmp=empSel.value;empSel.innerHTML='<option value="">Όλοι</option>'+E.map(e=>`<option value="${e.id}">${esc(e.name)}</option>`).join('');empSel.value=curEmp;
 let q=($('search')?.value||'').toLowerCase(),st=$('jfStatus')?.value||'',emp=$('jfEmp')?.value||'',from=$('jfFrom')?.value||'',to=$('jfTo')?.value||'',fq=$('jfQueue')?.value||'';
-let A=J.filter(j=>{let techNames=names(j.employeeIds||[]);if(q&&!([j.client,j.phone,j.address,j.type,j.task,j.code,j.pylonRef,j.assignmentNo,j.storeNo,j.city,j.assignmentSender,j.contractorName,j.contractorPhone,j.assignmentNotes,techNames].join(' ').toLowerCase().includes(q)))return false;if(st&&!workStateMatches(j,st))return false;if(emp&&!(j.employeeIds||[]).includes(emp))return false;if(fq==='dated'&&!j.date)return false;if(fq==='queue'&&j.date)return false;if(from&&(!j.date||j.date<from))return false;if(to&&(!j.date||j.date>to))return false;return true});
+let A=J.filter(j=>{let techNames=names(j.employeeIds||[]);if(q&&!([j.client,j.phone,j.address,j.type,j.task,j.notes,j.partsUsed,j.code,j.pylonRef,j.assignmentNo,j.storeNo,j.city,j.assignmentSender,j.contractorName,j.contractorPhone,j.assignmentNotes,techNames].join(' ').toLowerCase().includes(q)))return false;if(st&&!workStateMatches(j,st))return false;if(emp&&!(j.employeeIds||[]).includes(emp))return false;if(fq==='dated'&&!j.date)return false;if(fq==='queue'&&j.date)return false;if(from&&(!j.date||j.date<from))return false;if(to&&(!j.date||j.date>to))return false;return true});
 let cmp={code:(a,b)=>(a.code||'').localeCompare(b.code||''),date:(a,b)=>((a.date||'')+(a.start||'')).localeCompare((b.date||'')+(b.start||'')),client:(a,b)=>(a.client||'').localeCompare(b.client||''),status:(a,b)=>(a.status||'').localeCompare(b.status||'')};
 A.sort((a,b)=>(cmp[jobSort.key]?cmp[jobSort.key](a,b):0)*jobSort.dir);
-$('jobsBody').innerHTML=A.length?A.map(j=>`<tr class="${j.date?'':'queue'}"><td>${esc(j.code||'—')}</td><td>${j.date||'<span class="pill lo">Ουρά</span>'}</td><td>${j.date?j.start+'–'+j.end:'—'}</td><td><b>${esc(j.client||'—')}</b><div class="small">${esc(j.type||'')} ${j.equip?'• '+esc(j.equip):''}</div>${(j.assignmentNo||j.storeNo||j.city||j.assignmentSender||j.contractorName)?`<div class="small"><b>Ανάθεση:</b> ${j.assignmentNo?esc(j.assignmentNo):'—'}${j.storeNo?' • Κατάστημα '+esc(j.storeNo):''}${j.city?' • '+esc(j.city):''}</div><div class="small">${j.assignmentSender?'Από: '+esc(j.assignmentSender):''}${j.contractorName?' • Ανάδοχος: '+esc(j.contractorName):''}${j.contractorPhone?' ('+esc(j.contractorPhone)+')':''}</div>`:''}</td><td>${esc(names(j.employeeIds))}</td><td>${esc(veh(j.vehicleId))}</td><td>${stateBadge(j)}</td><td><div class="actions">${j.date?'':'<button class="btn primary" onclick="scheduleJob(\''+j.id+'\')" title="Προγραμματισμός">📅</button>'}${j.date&&j.status!=='Ολοκληρώθηκε'&&j.status!=='Ακυρώθηκε'?`<button class="btn good" onclick="addJobToBoard('${j.id}')" title="Προσθήκη στον Πίνακα Κίνησης Συνεργείων">➕ Πίνακας</button>`:''}<button class="btn light" onclick="editJob('${j.id}')">✏️</button><button class="btn light" onclick="cloneJob('${j.id}')" title="Αντιγραφή σε νέα εργασία">📋</button><button class="btn light" onclick="printJob('${j.id}')" title="Εκτύπωση">🖨️</button><button class="btn light" onclick="sendJobViber('${j.id}')" title="Αποστολή στο Viber">📨</button><button class="btn danger" onclick="delJob('${j.id}')">🗑️</button></div></td></tr>`).join(''):'<tr><td colspan="8">Δεν υπάρχουν εργασίες.</td></tr>';
+$('jobsBody').innerHTML=A.length?A.map(j=>`<tr class="${j.date?'':'queue'}"><td>${esc(j.code||'—')}</td><td>${j.date||'<span class="pill lo">Ουρά</span>'}</td><td>${j.date?j.start+'–'+j.end:'—'}</td><td><b>${esc(j.client||'—')}</b><div class="small">${esc(j.type||'')} ${j.equip?'• '+esc(j.equip):''}</div>${jobDetailsHtml(j,'job-list-detail')}${(j.assignmentNo||j.storeNo||j.city||j.assignmentSender||j.contractorName)?`<div class="small"><b>Ανάθεση:</b> ${j.assignmentNo?esc(j.assignmentNo):'—'}${j.storeNo?' • Κατάστημα '+esc(j.storeNo):''}${j.city?' • '+esc(j.city):''}</div><div class="small">${j.assignmentSender?'Από: '+esc(j.assignmentSender):''}${j.contractorName?' • Ανάδοχος: '+esc(j.contractorName):''}${j.contractorPhone?' ('+esc(j.contractorPhone)+')':''}</div>`:''}</td><td>${esc(names(j.employeeIds))}</td><td>${esc(veh(j.vehicleId))}</td><td>${stateBadge(j)}</td><td><div class="actions">${j.date?'':'<button class="btn primary" onclick="scheduleJob(\''+j.id+'\')" title="Προγραμματισμός">📅</button>'}${j.date&&j.status!=='Ολοκληρώθηκε'&&j.status!=='Ακυρώθηκε'?`<button class="btn good" onclick="addJobToBoard('${j.id}')" title="Προσθήκη στον Πίνακα Κίνησης Συνεργείων">➕ Πίνακας</button>`:''}<button class="btn light" onclick="editJob('${j.id}')">✏️</button><button class="btn light" onclick="cloneJob('${j.id}')" title="Αντιγραφή σε νέα εργασία">📋</button><button class="btn light" onclick="printJob('${j.id}')" title="Εκτύπωση">🖨️</button><button class="btn light" onclick="sendJobViber('${j.id}')" title="Αποστολή στο Viber">📨</button><button class="btn danger" onclick="delJob('${j.id}')">🗑️</button></div></td></tr>`).join(''):'<tr><td colspan="8">Δεν υπάρχουν εργασίες.</td></tr>';
 let i=A.reduce((s,j)=>s+Number(j.income||0),0),e=A.reduce((s,j)=>s+Number(j.expense||0),0);
 $('jobsFoot').innerHTML=A.length?`<td colspan="3">Σύνολο (${A.length})</td><td colspan="2">Έσοδα: ${eur(i)} • Έξοδα: ${eur(e)} • Καθαρό: ${eur(i-e)}</td><td colspan="3"></td>`:'';
 updateSortIndicators()}
@@ -588,8 +604,8 @@ function card(kind,id,key=''){
    const ds=candidateDateLabel(obj.date);
    return `<div class="board-card job candidate-card" draggable="true" title="Σύρε σε ημέρα και συνεργείο" ondblclick="event.stopPropagation();editCandidateJob('${id}')" ondragstart="dragStart(event,'candidate','${id}','')"><button class="x" onclick="event.stopPropagation();deleteCandidateJob('${id}')" title="Διαγραφή">×</button><button class="candidate-edit-btn" onclick="event.stopPropagation();editCandidateJob('${id}')" title="Επεξεργασία">✎</button><div class="candidate-title rich-board-title">🟪 ${richBoardTitle(obj,'Υποψήφια εργασία')}</div><div class="candidate-meta"><span>📅 ${esc(ds)}</span>${p!=='Κανονική'?`<span class="candidate-priority ${pc}">${esc(p)}</span>`:''}</div></div>`;
  }
- if(kind==='draft')return `<div class="board-card job draft-card" draggable="true" title="Σύρε στις Υποψήφιες για να την ξαναβγάλεις από το συνεργείο" ondblclick="event.stopPropagation();editDraftJob('${id}')" oncontextmenu="openDraftMenu(event,'${id}','${key}')" ondragstart="dragStart(event,'draft','${id}','${key}')"><button class="x" onclick="event.stopPropagation();deleteDraftJob('${id}')">×</button><div class="job-title rich-board-title">🟨 ${richBoardTitle(obj,'Πρόχειρη εργασία')}</div></div>`;
- if(kind==='job'){let title=obj.client||obj.code||'Χωρίς επωνυμία';return `<div class="board-card job ${deadlineState(obj)} ${jobTypeClass(obj)}" draggable="true" onclick="event.stopPropagation();editJob('${id}')" ondragstart="dragStart(event,'job','${id}','${key}')"><button class="x" onclick="event.stopPropagation();${key?`removeBoardItem('${key}','job','${id}')`:`void 0`}">${key?'×':''}</button><b class="job-title">${esc(title)}</b></div>`}
+ if(kind==='draft')return `<div class="board-card job draft-card" draggable="true" title="${key?'Σύρε στις Υποψήφιες για να την ξαναβγάλεις από το συνεργείο':'Σύρε στο σωστό πλαίσιο συνεργείου'}" ondblclick="event.stopPropagation();editDraftJob('${id}')" oncontextmenu="openDraftMenu(event,'${id}','${key}')" ondragstart="dragStart(event,'draft','${id}','${key}')"><button class="x" onclick="event.stopPropagation();deleteDraftJob('${id}')">×</button><div class="job-title rich-board-title">🟨 ${richBoardTitle(obj,'Πρόχειρη εργασία')}</div></div>`;
+ if(kind==='job'){let title=obj.client||obj.code||'Χωρίς επωνυμία';return `<div class="board-card job ${deadlineState(obj)} ${jobTypeClass(obj)}" draggable="true" onclick="event.stopPropagation();editJob('${id}')" ondragstart="dragStart(event,'job','${id}','${key}')"><button class="x" onclick="event.stopPropagation();${key?`removeBoardItem('${key}','job','${id}')`:`void 0`}">${key?'×':''}</button><b class="job-title">${esc(title)}</b>${jobDetailsHtml(obj,'job-card-detail')}</div>`}
  if(kind==='veh'){let title=[obj.model,obj.plate].filter(Boolean).join(' • ')||'Χωρίς στοιχεία οχήματος';if(obj.outOfService){let problem=String(obj.problem||'Χωρίς περιγραφή προβλήματος').trim();return `<div class="board-card veh vehicle-out-card" draggable="false" onclick="event.stopPropagation()" title="ΑΚΙΝΗΤΟ — ${esc(problem)}"><b>🔴 ${esc(title)} — ΑΚΙΝΗΤΟ</b><div class="vehicle-problem-card">⚠️ ${esc(problem)}</div></div>`}return `<div class="board-card veh" draggable="true" onclick="event.stopPropagation()" ondragstart="dragStart(event,'veh','${id}','${key}')"><b>${esc(title)}</b></div>`}let title=obj.name;return `<div class="board-card ${kind}" draggable="true" onclick="event.stopPropagation()" ondragstart="dragStart(event,'${kind}','${id}','${key}')"><b>${esc(title)}</b></div>`
 }
 
@@ -647,12 +663,14 @@ async function deleteCandidateJob(id){
   CAND=CAND.filter(x=>x.id!==id);save();renderBoard();
 }
 
-function addDraftJob(){openDraftEditor('')}
-function editDraftJob(id){openDraftEditor(id)}
-function openDraftEditor(id=''){
+let draftEditorTargetKey='';
+function addDraftJob(key=''){openDraftEditor('',key)}
+function editDraftJob(id){openDraftEditor(id,'')}
+function openDraftEditor(id='',targetKey=''){
   const modal=$('draftEditorModal'),text=$('draftEditorText'),hidden=$('draftEditorId'),title=$('draftEditorTitle');
   if(!modal||!text||!hidden)return;
   const d=id?D.find(x=>x.id===id):null;
+  draftEditorTargetKey=id?'':targetKey;
   hidden.value=d?d.id:'';
   setRichEditor(text,d||{title:''});
   if(title)title.textContent=d?'Επεξεργασία πρόχειρης εργασίας':'Γράψε την πρόχειρη εργασία';
@@ -662,6 +680,7 @@ function openDraftEditor(id=''){
 function closeDraftEditor(){
   const modal=$('draftEditorModal');
   if(modal)modal.classList.remove('open');
+  draftEditorTargetKey='';
 }
 function saveDraftEditor(){
   const text=$('draftEditorText'),hidden=$('draftEditorId');
@@ -675,7 +694,12 @@ function saveDraftEditor(){
     if(!d)return closeDraftEditor();
     d.title=value;d.richTitle=rich;
   }else{
-    D.push({id:uid('DRF'),title:value,richTitle:rich,createdAt:new Date().toISOString()});
+    const draft={id:uid('DRF'),title:value,richTitle:rich,createdAt:new Date().toISOString()};
+    D.push(draft);
+    if(draftEditorTargetKey){
+      const target=boardEntry(draftEditorTargetKey);
+      if(!target.drafts.includes(draft.id))target.drafts.push(draft.id);
+    }
   }
   save();renderBoard();closeDraftEditor();
 }
@@ -865,7 +889,7 @@ function openDailyBoardView(){
    jobs.forEach(j=>{
      total++;taskNo++;
      const title=j.client||j.code||j.type||'Εργασία';
-     const detail=[j.task,j.address].filter(Boolean).join('\n');
+     const detail=[j.task,j.notes&&'Σημειώσεις: '+j.notes,j.address].filter(Boolean).join('\n');
      tasks+=`<div class="daily-task" onclick="closeDailyBoardView();editJob('${j.id}')"><div class="daily-task-num">${taskNo}</div><div><div class="daily-task-title">${esc(title)}</div>${detail?`<div class="daily-task-detail">${esc(detail)}</div>`:''}</div><span class="daily-task-kind crm">ΕΡΓΑΣΙΑ</span></div>`;
    });
    html+=`<section class="daily-crew"><div class="daily-crew-head"><b>Συνεργείο ${slot}</b>${resourceHtml}</div>${tasks}</section>`;
@@ -893,7 +917,7 @@ function openCrewBoardView(){
    (vehicles.length?vehicles.map(n=>`<span class="daily-resource veh">🚐 ${esc(n)}</span>`).join(''):'<span class="daily-resource veh">🚐 Χωρίς VAN</span>');
  let no=0,tasks='';
  drafts.forEach(d=>{no++;tasks+=`<div class="daily-task" onclick="closeDailyBoardView();editDraftJob('${d.id}')"><div class="daily-task-num">${no}</div><div><div class="daily-task-title rich-board-title">${richBoardTitle(d,'Πρόχειρη εργασία')}</div></div><span class="daily-task-kind">ΠΡΟΧΕΙΡΗ</span></div>`});
- jobs.forEach(j=>{no++;const title=j.client||j.code||j.type||'Εργασία',detail=[j.task,j.address].filter(Boolean).join('\n');tasks+=`<div class="daily-task" onclick="closeDailyBoardView();editJob('${j.id}')"><div class="daily-task-num">${no}</div><div><div class="daily-task-title">${esc(title)}</div>${detail?`<div class="daily-task-detail">${esc(detail)}</div>`:''}</div><span class="daily-task-kind crm">ΕΡΓΑΣΙΑ</span></div>`});
+ jobs.forEach(j=>{no++;const title=j.client||j.code||j.type||'Εργασία',detail=[j.task,j.notes&&'Σημειώσεις: '+j.notes,j.address].filter(Boolean).join('\n');tasks+=`<div class="daily-task" onclick="closeDailyBoardView();editJob('${j.id}')"><div class="daily-task-num">${no}</div><div><div class="daily-task-title">${esc(title)}</div>${detail?`<div class="daily-task-detail">${esc(detail)}</div>`:''}</div><span class="daily-task-kind crm">ΕΡΓΑΣΙΑ</span></div>`});
  if(titleEl)titleEl.textContent='👁 Συνεργείο '+slot;
  if(dateEl)dateEl.textContent=dt.toLocaleDateString('el-GR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})+' • '+no+' '+(no===1?'εργασία':'εργασίες');
  body.innerHTML=`<section class="daily-crew"><div class="daily-crew-head"><b>Συνεργείο ${slot}</b>${resourceHtml}</div>${tasks||'<div class="daily-empty">Δεν υπάρχουν εργασίες στο συγκεκριμένο συνεργείο για την επιλεγμένη ημέρα.</div>'}</section>`;
@@ -912,16 +936,20 @@ function renderBoard(){
  for(let slot=1;slot<=BOARD_CREW_COUNT;slot++)for(let i=0;i<5;i++){
    let key=boardKey(dates[i],slot),x=boardEntry(key);
    let hasWork=((x.drafts||[]).length>0)||((x.jobs||[]).length>0);
-   let empChips=x.emps.map(id=>{let e=E.find(z=>z.id===id);return e?`<span class="crew-chip emp" draggable="true" ondragstart="dragStart(event,'emp','${id}','${key}')" title="Σύρε για μετακίνηση">👷 ${esc(e.name)}</span>`:''}).join('');let vehChips=x.vehs.map(id=>{let v=V.find(z=>z.id===id);if(!v)return '';let vehicleText=[v.model,v.plate].filter(Boolean).join(' • ')||'Χωρίς στοιχεία οχήματος',out=!!v.outOfService,problem=String(v.problem||'Χωρίς περιγραφή προβλήματος').trim();return `<span class="crew-chip veh crew-vehicle-line ${out?'vehicle-out-chip':''}" draggable="true" ondragstart="dragStart(event,'veh','${id}','${key}')" title="${out?'ΑΚΙΝΗΤΟ — '+esc(problem)+' • Σύρε πίσω στα VAN για αφαίρεση':'Σύρε για μετακίνηση'}">🚐 ${esc(vehicleText)}${out?`<span class="vehicle-problem-mini">🔴 ΑΚΙΝΗΤΟ — ${esc(problem)}</span>`:''}</span>`}).join('');html+=`<div class="board-cell ${hasWork?'has-work':''}" data-board-key="${key}" onmouseup="saveBoardCellHeight(this,'${key}')" onclick="if(event.target===this||event.target.classList.contains('crew-title')||event.target.classList.contains('job-stack'))addDraftJob()" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" ondrop="dropBoard(event,'${key}')"><div class="crew-head"><span class="crew-title">Συνεργείο ${slot}</span><button type="button" class="crew-viber-btn" onclick="event.stopPropagation();exportCrewImage('${dates[i]}',${slot})" title="Αντιγραφή εικόνας αυτού του συνεργείου για επικόλληση στο Viber">📋 Viber</button><div class="crew-employees">${empChips||'<span class="crew-chip empty">+ τεχνικός</span>'}</div><div class="crew-vehicles">${vehChips||'<span class="crew-chip empty">+ VAN</span>'}</div></div><div class="job-stack">${(x.drafts||[]).map(id=>card('draft',id,key)).join('')}${(x.jobs||[]).map(id=>card('job',id,key)).join('')}</div></div>`
+   let empChips=x.emps.map(id=>{let e=E.find(z=>z.id===id);return e?`<span class="crew-chip emp" draggable="true" ondragstart="dragStart(event,'emp','${id}','${key}')" title="Σύρε για μετακίνηση">👷 ${esc(e.name)}</span>`:''}).join('');let vehChips=x.vehs.map(id=>{let v=V.find(z=>z.id===id);if(!v)return '';let vehicleText=[v.model,v.plate].filter(Boolean).join(' • ')||'Χωρίς στοιχεία οχήματος',out=!!v.outOfService,problem=String(v.problem||'Χωρίς περιγραφή προβλήματος').trim();return `<span class="crew-chip veh crew-vehicle-line ${out?'vehicle-out-chip':''}" draggable="true" ondragstart="dragStart(event,'veh','${id}','${key}')" title="${out?'ΑΚΙΝΗΤΟ — '+esc(problem)+' • Σύρε πίσω στα VAN για αφαίρεση':'Σύρε για μετακίνηση'}">🚐 ${esc(vehicleText)}${out?`<span class="vehicle-problem-mini">🔴 ΑΚΙΝΗΤΟ — ${esc(problem)}</span>`:''}</span>`}).join('');html+=`<div class="board-cell ${hasWork?'has-work':''}" data-board-key="${key}" onmouseup="saveBoardCellHeight(this,'${key}')" onclick="if(event.target===this||event.target.classList.contains('crew-title')||event.target.classList.contains('job-stack'))addDraftJob('${key}')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" ondrop="dropBoard(event,'${key}')"><div class="crew-head"><span class="crew-title">Συνεργείο ${slot}</span><button type="button" class="crew-viber-btn" onclick="event.stopPropagation();exportCrewImage('${dates[i]}',${slot})" title="Αντιγραφή εικόνας αυτού του συνεργείου για επικόλληση στο Viber">📋 Viber</button><div class="crew-employees">${empChips||'<span class="crew-chip empty">+ τεχνικός</span>'}</div><div class="crew-vehicles">${vehChips||'<span class="crew-chip empty">+ VAN</span>'}</div></div><div class="job-stack">${(x.drafts||[]).map(id=>card('draft',id,key)).join('')}${(x.jobs||[]).map(id=>card('job',id,key)).join('')}</div></div>`
  }
  $('boardGrid').innerHTML=html;
  document.querySelectorAll('.board-cell[data-board-key]').forEach(el=>applySavedCellHeight(el,el.dataset.boardKey));
  document.querySelectorAll('.board-cell.has-work .job-stack').forEach(el=>{el.scrollTop=0});
  let usedD=new Set(Object.values(B).flatMap(x=>x.drafts||[]));
+ const orphanDrafts=D.filter(d=>!usedD.has(d.id));
  const priorityRank={'Επείγουσα':0,'Υψηλή':1,'Κανονική':2};
  const sortedCandidates=[...CAND].sort((a,b)=>(a.date||'9999-12-31').localeCompare(b.date||'9999-12-31') || (priorityRank[a.priority]??2)-(priorityRank[b.priority]??2) || String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
- $('poolCandidates').innerHTML=sortedCandidates.map(c=>card('candidate',c.id)).join('')||'<span class="candidate-empty">Δεν έχεις υποψήφιες. Πάτησε <b>+ Υποψ.</b> και μάζεψε εδώ τις δουλειές που σκέφτεσαι για τις επόμενες ημέρες.</span>';
- $('poolJobs').innerHTML=D.filter(d=>!usedD.has(d.id)).map(d=>card('draft',d.id)).join('')||'<span class="small">Δεν υπάρχουν πρόχειρες εργασίες.</span>';
+ const orphanHtml=orphanDrafts.length?`<div class="candidate-group-label orphan">🟨 Πρόχειρες χωρίς συνεργείο — σύρε τες στο σωστό πλαίσιο</div>${orphanDrafts.map(d=>card('draft',d.id)).join('')}`:'';
+ const candidateHtml=sortedCandidates.length?`${orphanDrafts.length?'<div class="candidate-group-label">🟪 Υποψήφιες εργασίες</div>':''}${sortedCandidates.map(c=>card('candidate',c.id)).join('')}`:'';
+ $('poolCandidates').innerHTML=(orphanHtml+candidateHtml)||'<span class="candidate-empty">Δεν έχεις υποψήφιες. Πάτησε <b>+ Υποψ.</b> και μάζεψε εδώ τις δουλειές που σκέφτεσαι για τις επόμενες ημέρες.</span>';
+ if($('candidatePoolTitle'))$('candidatePoolTitle').textContent=orphanDrafts.length?'Υποψήφιες / πρόχειρες χωρίς συνεργείο':'Υποψήφιες εργασίες επόμενων ημερών';
+ $('poolJobs').innerHTML=orphanDrafts.map(d=>card('draft',d.id)).join('')||'<span class="small">Δεν υπάρχουν πρόχειρες εργασίες.</span>';
  let assignedEmp=new Set(),assignedVeh=new Set();Object.entries(B).forEach(([k,x])=>{const p=k.split('#');if(p[0]===boardSelectedDate&&parseInt(p[1],10)<=BOARD_CREW_COUNT){(x.emps||[]).forEach(id=>assignedEmp.add(id));(x.vehs||[]).forEach(id=>assignedVeh.add(id))}});$('poolEmps').innerHTML=E.filter(e=>e.active!==false&&!empOnLeave(e,boardSelectedDate)&&!assignedEmp.has(e.id)).map(e=>card('emp',e.id)).join('')||'<span class="small">Κανένας διαθέσιμος.</span>';$('poolVehs').innerHTML=V.filter(v=>v.active!==false&&!assignedVeh.has(v.id)).map(v=>card('veh',v.id)).join('')||'<span class="small">Κανένα διαθέσιμο.</span>';
  ['poolJobs','poolEmps','poolVehs'].forEach(id=>{let el=$(id);el.ondragover=allowDrop;el.ondragleave=leaveDrop;el.ondrop=dropPool});
  const candidatePool=$('poolCandidates');if(candidatePool){candidatePool.ondragover=allowDrop;candidatePool.ondragleave=leaveDrop;candidatePool.ondrop=dropCandidatePool}

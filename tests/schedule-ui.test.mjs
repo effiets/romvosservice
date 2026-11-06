@@ -166,6 +166,36 @@ test('multiple legacy writes in one action become one service transaction', asyn
   } finally { app.restore(); }
 });
 
+test('a draft created inside a crew cell saves the draft and board assignment together', async () => {
+  const app = fixture('editor', { drafts: [], board: {} });
+  try {
+    const draft = { id: 'DRF-1', title: 'Νέα εργασία συνεργείου' };
+    const board = { '2026-11-06#2': { jobs: [], drafts: [draft.id], emps: [], vehs: [] } };
+    app.editService({ drafts: [draft], board });
+    app.win.dispatchEvent(new Event('romvos:schedule-saved'));
+    await tick();
+    assert.equal(app.calls.length, 1);
+    assert(app.calls[0].changes.some(change => change.key === 'drafts'));
+    assert(app.calls[0].changes.some(change => change.key === 'board'));
+    assert.equal(app.calls[0].desired.board['2026-11-06#2'].drafts[0], draft.id);
+  } finally { app.restore(); }
+});
+
+test('job description and notes survive a shared save unchanged', async () => {
+  const app = fixture('editor', { jobs: [] });
+  try {
+    const job = { id: 'JOB-1', client: 'Δοκιμή', task: 'Έλεγχος μηχανήματος',
+      notes: 'Να επικοινωνήσουμε πριν την επίσκεψη.' };
+    app.editService({ jobs: [job] });
+    app.win.dispatchEvent(new Event('romvos:schedule-saved'));
+    await tick();
+    assert.equal(app.calls.length, 1);
+    assert.equal(app.calls[0].desired.jobs[0].task, job.task);
+    assert.equal(app.calls[0].desired.jobs[0].notes, job.notes);
+    assert.deepEqual(app.current().jobs[0], job);
+  } finally { app.restore(); }
+});
+
 test('viewer popup writes are denied and post-write legacy assignments are reverted', async () => {
   const app = fixture('viewer', { returns: [{ id: 'RET-1', status: 'Pending' }] });
   try {
