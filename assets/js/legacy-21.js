@@ -2,9 +2,9 @@
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
-const KEYS={reminder:'romvos_simple_reminders',todo:'romvos_todo_v1',orders:'romvos_supplier_orders',incoming:'romvos_incoming_equipment',returns:'romvos_pending_returns'};
-const LABEL={reminder:'Υπενθυμίσεις',todo:'To Do',orders:'Παραγγελίες',incoming:'Εισερχόμενος Εξοπλισμός',returns:'Εκκρεμείς Επιστροφές'};
-const TABS={reminder:'reminders',todo:'todo',orders:'orders',incoming:'incoming',returns:'returns'};
+const KEYS={reminder:'romvos_simple_reminders',orders:'romvos_supplier_orders',incoming:'romvos_incoming_equipment',returns:'romvos_pending_returns'};
+const LABEL={reminder:'Υπενθυμίσεις',orders:'Παραγγελίες',incoming:'Εισερχόμενος Εξοπλισμός',returns:'Εκκρεμείς Επιστροφές'};
+const TABS={reminder:'reminders',orders:'orders',incoming:'incoming',returns:'returns'};
 const dismissed=new Set();
 let current=null;
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -25,8 +25,6 @@ function collect(){
  const now=new Date(),out=[];
  // Απλές υπενθυμίσεις
  read(KEYS.reminder).forEach(r=>{if(!r||r.done||/^TEST(?:-|$)/i.test(String(r.id||'')))return;let m=dt(r.date,r.time||'09:00');if(!m||m>now)return;if(r.snoozeUntil){const sn=new Date(r.snoozeUntil);if(!Number.isNaN(sn.getTime())&&sn>now)return}out.push(mk('reminder',r,m,r.text||'Υπενθύμιση','', 'reminder',r.date,r.time||'09:00'))});
- // To Do
- read(KEYS.todo).forEach(x=>{if(!x||x.done||!x.deadlineDate||/^TEST(?:-|$)/i.test(String(x.id||'')))return;let m=dt(x.deadlineDate,x.deadlineTime||'09:00');if(!m||m>now||isFutureSnooze(x,now))return;out.push(mk('todo',x,m,x.title||x.text||'To Do',x.note||'', 'deadline',x.deadlineDate,x.deadlineTime||'09:00'))});
  // Παραγγελίες
  read(KEYS.orders).forEach(x=>{if(!x||closedOrder(x)||isFutureSnooze(x,now))return;let date='',sub='',info='';if(x.status==='Αναμονή προσφοράς'){date=x.quoteDueDate||(x.requestDate?addDays(x.requestDate,2):'');sub='quote';info=['Κατάσταση: '+(x.status||''),x.pending?('Εκκρεμότητα: '+x.pending):'',x.notes?('Σημείωση: '+x.notes):''].filter(Boolean).join('\n')}else if(['Παραγγέλθηκε / Αναμονή παραλαβής','Μερική παραλαβή / Αναμονή υπολοίπων','Λάθος υλικά / Αναμονή διόρθωσης'].includes(x.status)){date=x.expectedDate;sub='delivery';info=['Κατάσταση: '+(x.status||''),x.pending?('Εκκρεμότητα: '+x.pending):'',x.notes?('Σημείωση: '+x.notes):''].filter(Boolean).join('\n')}if(!date)return;let m=dt(date,'09:00');if(!m||m>now)return;out.push(mk('orders',x,m,[x.supplier,x.title||x.code].filter(Boolean).join(' — '),info,sub,date,'09:00'))});
  // Εισερχόμενος εξοπλισμός — μόνο όταν έχει οριστεί υπενθύμιση
@@ -50,7 +48,7 @@ function render(a,test=false){
  body.innerHTML=(test?'<span class="romvos-test-label">Δοκιμή</span>':'')+'<div class="romvos-inapp-item"><b>'+esc(a.title||'')+'</b>'+(a.info?'<div class="romvos-alert-info">'+esc(a.info)+'</div>':'')+(when?'<div class="romvos-alert-when">'+esc(when)+'</div>':'')+'</div>';
  $('romvosInAppMove')?.classList.remove('show');
  const done=$('romvosAlertDone'),open=$('romvosAlertOpen');
- const taskKind=['reminder','todo'].includes(a.kind);
+ const taskKind=a.kind==='reminder';
  if(done)done.style.display=taskKind?'inline-block':'none';
  if(open)open.style.display=taskKind?'none':'inline-block';
  el.classList.add('show');play();
@@ -63,7 +61,7 @@ function snoozeClosedAlertTo1600(c){
  const until=four.toISOString();
  if(c.kind==='reminder'){
    mutate('reminder',c.id,x=>{x.snoozeUntil=until;x.notified=false});
- }else if(['todo','orders','incoming','returns'].includes(c.kind)){
+ }else if(['orders','incoming','returns'].includes(c.kind)){
    mutate(c.kind,c.id,x=>{x.alertSnoozeUntil=until});
  }
  dismissed.delete(c.sig);
@@ -77,12 +75,12 @@ window.romvosCloseInAppAlert=function(){
  closeBox();setTimeout(tick,450)
 };
 window.romvosToggleInAppDate=function(){const row=$('romvosInAppMove');if(!row)return;row.classList.toggle('show');if(!row.classList.contains('show'))return;const t=new Date();t.setDate(t.getDate()+1);$('romvosInAppDate').value=ymd(t);$('romvosInAppTime').value=current?.time||'09:00'};
-function mutate(kind,id,fn){const key=KEYS[kind],a=read(key),i=a.findIndex(x=>x&&x.id===id);if(i<0)return false;fn(a[i]);write(key,a);try{if(kind==='reminder'&&typeof SIMPLE_REMINDERS!=='undefined')SIMPLE_REMINDERS=a;if(kind==='orders'&&typeof ORDERS!=='undefined')ORDERS=a;if(kind==='incoming'&&typeof INCOMING!=='undefined')INCOMING=a;if(kind==='returns'&&typeof RETURNS!=='undefined')RETURNS=a}catch(e){};try{window.renderSimpleReminders?.();window.renderTodoList?.();window.renderOrders?.();window.renderIncoming?.();window.renderReturns?.()}catch(e){}return true}
+function mutate(kind,id,fn){const key=KEYS[kind],a=read(key),i=a.findIndex(x=>x&&x.id===id);if(i<0)return false;fn(a[i]);write(key,a);try{if(kind==='reminder'&&typeof SIMPLE_REMINDERS!=='undefined')SIMPLE_REMINDERS=a;if(kind==='orders'&&typeof ORDERS!=='undefined')ORDERS=a;if(kind==='incoming'&&typeof INCOMING!=='undefined')INCOMING=a;if(kind==='returns'&&typeof RETURNS!=='undefined')RETURNS=a}catch(e){};try{window.renderSimpleReminders?.();window.renderOrders?.();window.renderIncoming?.();window.renderReturns?.()}catch(e){}return true}
 function futureISO(date,time){const d=dt(date,time||'09:00');return d?d.toISOString():''}
-function moveCurrent(date,time){if(!current||current.test){closeBox();return}const c=current;if(c.kind==='reminder')mutate(c.kind,c.id,x=>{x.date=date;x.time=time;x.snoozeUntil='';x.notified=false});else if(c.kind==='todo')mutate(c.kind,c.id,x=>{x.deadlineDate=date;x.deadlineTime=time;x.alertSnoozeUntil=''});else if(c.kind==='incoming')mutate(c.kind,c.id,x=>{x.reminderDate=date;x.reminderTime=time;x.alertSnoozeUntil=''});else if(['orders','returns'].includes(c.kind))mutate(c.kind,c.id,x=>{x.alertSnoozeUntil=futureISO(date,time)});dismissed.delete(c.sig);closeBox();setTimeout(tick,450)}
+function moveCurrent(date,time){if(!current||current.test){closeBox();return}const c=current;if(c.kind==='reminder')mutate(c.kind,c.id,x=>{x.date=date;x.time=time;x.snoozeUntil='';x.notified=false});else if(c.kind==='incoming')mutate(c.kind,c.id,x=>{x.reminderDate=date;x.reminderTime=time;x.alertSnoozeUntil=''});else if(['orders','returns'].includes(c.kind))mutate(c.kind,c.id,x=>{x.alertSnoozeUntil=futureISO(date,time)});dismissed.delete(c.sig);closeBox();setTimeout(tick,450)}
 window.romvosTomorrowInAppAlert=function(){const t=new Date();t.setDate(t.getDate()+1);moveCurrent(ymd(t),current?.time||'09:00')};
 window.romvosApplyInAppDate=function(){const d=$('romvosInAppDate')?.value,t=$('romvosInAppTime')?.value||'09:00';if(!d)return alert('Διάλεξε ημερομηνία.');moveCurrent(d,t)};
-window.romvosCompleteInAppAlert=function(){if(!current)return;if(current.test){closeBox();return}const c=current;if(c.kind==='reminder')mutate('reminder',c.id,x=>{x.done=true;x.snoozeUntil=''});else if(c.kind==='todo'){try{window.toggleTodoItem?.(c.id)}catch(e){mutate('todo',c.id,x=>{x.done=true;x.doneAt=new Date().toISOString()})}}dismissed.delete(c.sig);closeBox();setTimeout(tick,450)};
+window.romvosCompleteInAppAlert=function(){if(!current)return;if(current.test){closeBox();return}const c=current;if(c.kind==='reminder')mutate('reminder',c.id,x=>{x.done=true;x.snoozeUntil=''});dismissed.delete(c.sig);closeBox();setTimeout(tick,450)};
 window.romvosOpenInAppAlert=function(){if(!current)return;const c=current;if(!c.test) dismissed.add(c.sig);closeBox();document.querySelector('nav button[data-tab="'+TABS[c.kind]+'"]')?.click();setTimeout(()=>{try{if(c.kind==='orders')window.editOrder?.(c.id);else if(c.kind==='incoming')window.editIncoming?.(c.id);else if(c.kind==='returns')window.editReturn?.(c.id)}catch(e){}},80)};
 function tick(force=false,kind=''){if($('romvosInAppAlert')?.classList.contains('show'))return;const all=collect();const a=kind?all.find(x=>x.kind===kind):all[0];if(a)render(a,false)}
 window.romvosAlertTick=tick;
@@ -94,11 +92,10 @@ window.showOrderAlertPopup=function(){tick(true,'orders')};
 
 function test(kind){const n=new Date(),date=ymd(n),time=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');const samples={
  reminder:mk('reminder',{id:'TEST-REM'},n,'Δοκιμαστική υπενθύμιση','Έλεγχος του δικού μας παραθύρου.','test',date,time),
- todo:mk('todo',{id:'TEST-TODO'},n,'Δοκιμαστικό To Do','Δοκιμή ειδοποίησης To Do.','test',date,time),
  orders:mk('orders',{id:'TEST-ORD'},n,'Προμηθευτής — Δοκιμαστική παραγγελία','Κατάσταση: Αναμονή παραλαβής\nΕκκρεμότητα: Δοκιμή popup.','test',date,time),
  incoming:mk('incoming',{id:'TEST-IN'},n,'Πελάτης — EQ-TEST','Εξοπλισμός: Δοκιμαστική μονάδα\nΚατάσταση: Αναμονή ελέγχου','test',date,time),
  returns:mk('returns',{id:'TEST-RET'},n,'Πελάτης — RET-TEST','Στάλθηκε: Δοκιμαστικό ανταλλακτικό\nΑναμένεται πίσω: Ελαττωματικό','test',date,time)};render(samples[kind],true)}
-window.testSimpleReminder=()=>test('reminder');window.testTodoReminder=()=>test('todo');window.testOrderReminder=()=>test('orders');window.testIncomingReminder=()=>test('incoming');window.testReturnReminder=()=>test('returns');
+window.testSimpleReminder=()=>test('reminder');window.testOrderReminder=()=>test('orders');window.testIncomingReminder=()=>test('incoming');window.testReturnReminder=()=>test('returns');
 
 function addReminderFields(){
  // Εισερχόμενος εξοπλισμός
@@ -118,7 +115,7 @@ function wrapModuleSaves(){
  if(typeof oldSR==='function')window.saveReturn=function(){const id=$('retId')?.value||'',time=$('retReminderTime')?.value||'09:00',before=new Set(read(KEYS.returns).map(x=>x.id));const r=oldSR.apply(this,arguments);let a=read(KEYS.returns),target=id?a.find(x=>x.id===id):a.find(x=>!before.has(x.id));if(target){target.reminderTime=time;target.alertSnoozeUntil='';write(KEYS.returns,a);try{if(typeof RETURNS!=='undefined')RETURNS=a;renderReturns?.()}catch(e){}}return r};
 }
 function addTestButton(tab,fn,label='🧪 Δοκιμή υπενθύμισης'){const sec=$(tab);if(!sec)return;const actions=sec.querySelector('.top .actions')||sec.querySelector('.top');if(!actions||actions.querySelector('[data-romvos-alert-test]'))return;const b=document.createElement('button');b.type='button';b.className='btn light';b.dataset.romvosAlertTest='1';b.textContent=label;b.title='Δοκιμή του popup μέσα στο ROMVOS';b.onclick=fn;actions.appendChild(b)}
-function arrangeMenu(){const nav=document.querySelector('aside nav');if(!nav)return;nav.querySelectorAll('.romvos-menu-separator').forEach(x=>x.remove());const groups=[['board'],['reminders','todo'],['orders','incoming','returns'],['clients'],['emps','vehs']];groups.forEach((g,gi)=>{g.forEach(tab=>{const b=nav.querySelector('button[data-tab="'+tab+'"]');if(b)nav.appendChild(b)});if(gi<groups.length-1){const sep=document.createElement('div');sep.className='romvos-menu-separator';sep.setAttribute('aria-hidden','true');nav.appendChild(sep)}})}
+function arrangeMenu(){const nav=document.querySelector('aside nav');if(!nav)return;nav.querySelectorAll('.romvos-menu-separator').forEach(x=>x.remove());const groups=[['board'],['reminders'],['orders','incoming','returns'],['clients'],['emps','vehs']];groups.forEach((g,gi)=>{g.forEach(tab=>{const b=nav.querySelector('button[data-tab="'+tab+'"]');if(b)nav.appendChild(b)});if(gi<groups.length-1){const sep=document.createElement('div');sep.className='romvos-menu-separator';sep.setAttribute('aria-hidden','true');nav.appendChild(sep)}})}
 function tooltipText(b){const t=(b.textContent||'').trim(),oc=b.getAttribute('onclick')||'';if(t==='✏️')return 'Επεξεργασία';if(t==='🗑️')return 'Διαγραφή';if(t==='👁️')return 'Προβολή';if(t==='📧')return 'Email';if(t==='✕'||t==='×')return oc.includes('remove')?'Διαγραφή γραμμής':'Κλείσιμο';if(t==='🎙️'||t==='🎤')return 'Υπαγόρευση';if(t==='↩')return 'Επαναφορά';if(t==='✓'||t==='✅')return 'Ολοκλήρωση';return ''}
 function addTooltips(root=document){root.querySelectorAll?.('button').forEach(b=>{if(b.title)return;const x=tooltipText(b);if(x){b.title=x;b.setAttribute('aria-label',x)}})}
 function updateReminderBadge(){const n=read(KEYS.reminder).filter(r=>r&&!r.done&&!/^TEST(?:-|$)/i.test(String(r.id||''))).length;const e=$('reminderNavCount');if(e){e.textContent=n;e.style.display=n?'inline-flex':'none'}}

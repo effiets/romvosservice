@@ -3,13 +3,10 @@
   function parseArr(key){try{const a=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
   function writeArr(key,a){try{localStorage.setItem(key,JSON.stringify(a))}catch(e){}}
   function removeTestRows(){
-    // Remove only test records created by our own test buttons; never user reminders/todos.
+    // Remove only test records created by our own reminder test button.
     const rk='romvos_simple_reminders';
     const ra=parseArr(rk); const rc=ra.filter(r=>!/^TEST(?:-|$)/i.test(String(r&&r.id||'')));
     if(rc.length!==ra.length)writeArr(rk,rc);
-    const tk='romvos_todo_v1';
-    const ta=parseArr(tk); const tc=ta.filter(t=>!/^TEST(?:-|$)/i.test(String(t&&t.id||'')));
-    if(tc.length!==ta.length)writeArr(tk,tc);
   }
   function closeTestPopupOnStartup(){
     const el=document.getElementById('romvosInAppAlert');
@@ -26,7 +23,7 @@
   }
   function enforceNavOrder(){
     const nav=document.querySelector('aside nav'); if(!nav)return;
-    const order=['board','reminders','todo','orders','clients','incoming','returns','emps','vehs'];
+    const order=['board','reminders','orders','clients','incoming','returns','emps','vehs'];
     order.forEach(tab=>{const b=nav.querySelector('button[data-tab="'+tab+'"]');if(b)nav.appendChild(b)});
   }
   function init(){

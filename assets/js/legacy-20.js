@@ -71,14 +71,7 @@
     try{window.renderSimpleReminders?.()}catch(e){}
     check(!!force);
   };
-  window.romvosCheckInAppAlerts=(function(old){
-    return function(forceKind){
-      if(forceKind==='todo'){return typeof old==='function'?old(forceKind):undefined}
-      check(forceKind==='reminder');
-      // Αν δεν υπάρχει ληγμένη απλή υπενθύμιση, άφησε τον υπάρχοντα μηχανισμό να ελέγξει To Do.
-      if(!due().length && typeof old==='function')return old(forceKind);
-    };
-  })(window.romvosCheckInAppAlerts);
+  window.romvosCheckInAppAlerts=function(forceKind){check(forceKind==='reminder')};
 
   function start(){
     updateBadge();

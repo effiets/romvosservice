@@ -25,8 +25,6 @@
   function dateMoment(date,time){if(!date)return null;const d=new Date(date+'T'+(time||'09:00')+':00');return Number.isNaN(d.getTime())?null:d}
   function collect(){
     const now=new Date(),out=[];
-    // To Do
-    try{const arr=JSON.parse(localStorage.getItem('romvos_todo_v1')||'[]');(Array.isArray(arr)?arr:[]).forEach(x=>{if(x.done||!x.deadlineDate)return;const m=dateMoment(x.deadlineDate,x.deadlineTime);if(m&&m<=now)out.push({sig:`todo:${x.id}:${x.deadlineDate}:${x.deadlineTime||'09:00'}`,moment:m,type:'To Do',title:x.title||x.text||'To Do',detail:'Προθεσμία: '+m.toLocaleString('el-GR',{dateStyle:'short',timeStyle:'short'}),overdue:m<now,tab:'todo',open:()=>window.editTodoItem?.(x.id)})})}catch(e){}
     // Απλές υπενθυμίσεις
     try{if(typeof SIMPLE_REMINDERS!=='undefined')SIMPLE_REMINDERS.forEach(r=>{if(r.done||!r.date)return;const m=dateMoment(r.date,r.time||'09:00');if(!m||m>now)return;if(r.snoozeUntil&&new Date(r.snoozeUntil)>now)return;out.push({sig:`rem:${r.id}:${r.date}:${r.time||'09:00'}`,moment:m,type:'Υπενθύμιση',title:r.text||'Υπενθύμιση',detail:m.toLocaleString('el-GR',{dateStyle:'short',timeStyle:'short'}),overdue:m<now,tab:'reminders'})})}catch(e){}
     // Παραγγελίες / προσφορές

@@ -1,5 +1,5 @@
 
-/* v6.5.9 — To Do edit + legacy deadline alerts disabled */
+/* v6.5.9 — legacy deadline alerts disabled */
 try{
   window.checkDeadlineAlerts=function(){};
   window.showDeadlinePopup=function(){};

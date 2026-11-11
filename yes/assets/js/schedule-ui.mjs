@@ -103,7 +103,7 @@ export function initializeScheduleUi(options = {}) {
       ? !shared || busy || failed || !view || !member
       : shared && (busy || failed || !view || !member));
     byId('accountStorageScope').textContent = shared || sharedOnly
-      ? 'Κοινά: πρόγραμμα, εργασίες, τεχνικοί, οχήματα, επαφές, To Do και αρχείο, υπενθυμίσεις, παραγγελίες, εισερχόμενος εξοπλισμός και επιστροφές.'
+      ? 'Κοινά: πρόγραμμα, εργασίες, τεχνικοί, οχήματα, επαφές, υπενθυμίσεις, παραγγελίες, εισερχόμενος εξοπλισμός και επιστροφές.'
       : 'Τα δεδομένα αποθηκεύονται σε αυτόν τον browser. Το κοινό πρόγραμμα ενεργοποιείται ξεχωριστά.';
     byId('scheduleOpen').textContent = sharedOnly ? 'Κατάσταση κοινής βάσης' : 'Κοινό πρόγραμμα';
     updateBackupControls();

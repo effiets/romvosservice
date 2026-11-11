@@ -23,7 +23,7 @@ This updates the hosting page and assets without changing JSON backups. Backup J
 
 ## Current storage
 
-Email/password sign-in and approved team membership are required. After approval, every browser automatically loads the single Firestore service; there is no selectable local working mode. The shared implementation covers the crew board, jobs, drafts, candidates, technicians, vehicles, contacts, To Do/archive, reminders, orders, incoming equipment, and returns. Personal display preferences and data belonging to the other HTML applications remain local.
+Email/password sign-in and approved team membership are required. After approval, every browser automatically loads the single Firestore service; there is no selectable local working mode. The shared implementation covers the crew board, jobs, drafts, candidates, technicians, vehicles, contacts, reminders, orders, incoming equipment, and returns. Personal display preferences and data belonging to the other HTML applications remain local.
 
 This expansion uses schema version 3. It stores one document for each of the 13 service modules, plus metadata, so the validated initial backup fits in one atomic transaction. Existing schema 1 scheduling data remains readable; the first schema 3 save supersedes it without a risky bulk deletion. A browser's pre-migration local lists are preserved only as recovery data and are never used instead of the common database.
 

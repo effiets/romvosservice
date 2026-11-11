@@ -12,13 +12,15 @@
     if (!Array.isArray(parsed)) throw new Error('Invalid service list');
     return parsed;
   };
+  // Retained as dormant schema-v3 compatibility data. The To-Do feature is no
+  // longer exposed by this application, but these values must round-trip so a
+  // normal save cannot erase records created by older versions.
   let todos = list(localStorage.getItem(fields.todos));
   let todoArchive = list(localStorage.getItem(fields.todoArchive));
   let applying = false;
   const dirty = new Set();
   const editors = [
     { field: 'clients', prefix: /^(cli|clientSite)/, clear: ['clearClient'], ids: ['cliId', 'cliName'] },
-    { field: 'todos', prefix: /^todo/, clear: ['cancelTodoEdit'], ids: ['todoEditId', 'todoTitle', 'todoNote'] },
     { field: 'reminders', prefix: /^simpleRem/, clear: ['clearSimpleReminder'], ids: ['simpleRemId', 'simpleRemText'] },
     { field: 'orders', prefix: /^ord/, clear: ['clearOrder'], ids: ['ordId', 'ordSupplier', 'ordTitle'] },
     { field: 'incoming', prefix: /^(in[A-Z]|eq-)/, clear: ['clearIncoming'], ids: ['inId', 'inContact', 'inProblem'] },
@@ -68,7 +70,7 @@
       window.romvosServiceStorage.replace(values);
       dirty.clear();
       render(); renderBoard();
-      for (const name of ['fillModuleLists', 'romvosRefreshContactSuggestions', 'renderSimpleReminders', 'renderTodoList', 'renderTodoArchive',
+      for (const name of ['fillModuleLists', 'romvosRefreshContactSuggestions', 'renderSimpleReminders',
         'renderOrders', 'renderIncoming', 'renderReturns', 'updateReminderDueBanner']) window[name]?.();
     } finally { applying = false; }
   }

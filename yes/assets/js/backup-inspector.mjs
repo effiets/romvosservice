@@ -10,8 +10,8 @@ const modules = [
   { key: 'candidates', storage: 'romvos_board_candidates_v1', label: 'Υποψήφιες εργασίες' },
   { key: 'board', storage: 'romvos_board', label: 'Θέσεις πίνακα συνεργείων' },
   { key: 'reminders', storage: 'romvos_simple_reminders', label: 'Υπενθυμίσεις' },
-  { key: 'todos', storage: 'romvos_todo_v1', label: 'To Do' },
-  { key: 'todoArchive', storage: 'romvos_todo_archive_v1', label: 'Αρχείο To Do' },
+  { key: 'todos', storage: 'romvos_todo_v1', label: 'Legacy tasks', hidden: true },
+  { key: 'todoArchive', storage: 'romvos_todo_archive_v1', label: 'Legacy task archive', hidden: true },
   { key: 'orders', storage: 'romvos_supplier_orders', label: 'Παραγγελίες' },
   { key: 'incoming', storage: 'romvos_incoming_equipment', label: 'Εισερχόμενος εξοπλισμός' },
   { key: 'returns', storage: 'romvos_pending_returns', label: 'Εκκρεμείς επιστροφές' },
@@ -94,5 +94,7 @@ export function inspectRomvosBackup(text) {
   if (extraModules.length) warnings.push('Το backup περιλαμβάνει πρόσθετες ενότητες ή ξεχωριστά αντίγραφα που χρειάζονται αντιστοίχιση με την τρέχουσα εφαρμογή πριν από τη μεταφορά. Δεν επιλέγεται αυτόματα κάποια έκδοση.');
   if (extraModules.some(module => module.sources.some(source => source.invalid))) warnings.push('Κάποια πρόσθετα σύνολα περιέχουν μη έγκυρο JSON και χρειάζονται έλεγχο.');
   const createdAt = typeof backup.createdAt === 'string' && Number.isFinite(Date.parse(backup.createdAt)) ? backup.createdAt : null;
-  return { format: full ? 'full' : 'legacy', createdAt, counts, inventory, populatedBoardCells, extraModules, boardReferences, migration, warnings };
+  return { format: full ? 'full' : 'legacy', createdAt, counts,
+    inventory: inventory.filter(module => !module.hidden), populatedBoardCells,
+    extraModules, boardReferences, migration, warnings };
 }

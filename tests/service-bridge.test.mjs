@@ -119,9 +119,9 @@ test('upgrading a shared session preserves the original additional lists before 
 
 test('a locally saved form stops blocking activation after its controller clears it', async () => {
   const app = fixture();
-  app.input('todoDeadlineDate');
+  app.input('simpleRemDate');
   assert.equal(app.bridge.editorOpen(), true);
-  app.storage.setItem('romvos_todo_v1', '[{"id":"TODO-1","title":"Saved task"}]');
+  app.storage.setItem('romvos_simple_reminders', '[{"id":"REM-1","text":"Saved reminder"}]');
   await new Promise(resolve => queueMicrotask(resolve));
   assert.equal(app.bridge.editorOpen(), false);
 });
