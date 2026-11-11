@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const source = readFileSync(new URL('../assets/js/app.js', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 test('saving from a crew cell attaches the new draft to that exact board cell', () => {
   const start = source.indexOf("let draftEditorTargetKey='';");
@@ -71,4 +72,131 @@ test('job description and notes render visibly and escape user text', () => {
   assert.match(source, /jobDetailsHtml\(obj,'job-card-detail'\)/);
   assert.match(source, /jobDetailsHtml\(j,'job-list-detail'\)/);
   assert.match(source, /jobDetailsHtml\(j,'job-dashboard-detail'\)/);
+});
+
+test('new candidate work selects an active contact and stores the requested work type', () => {
+  const start = source.indexOf('function nextWorkday');
+  const end = source.indexOf('async function deleteCandidateJob', start);
+  assert(start >= 0 && end > start, 'candidate editor implementation was not found');
+
+  const element = value => ({ value, innerHTML: '', textContent: '', focusCount: 0,
+    focus() { this.focusCount++; }, classList: { add() {}, remove() {} } });
+  const elements = new Map([
+    ['candidateEditorModal', element('')],
+    ['candidateEditorText', element('')],
+    ['candidateEditorId', element('')],
+    ['candidateEditorClient', element('')],
+    ['candidateEditorType', element('Βλάβη')],
+    ['candidateEditorDate', element('')],
+    ['candidateEditorPriority', element('Κανονική')],
+    ['candidateEditorTitle', element('')],
+    ['candidateClientNames', element('')],
+  ]);
+  const candidates = [];
+  const drafts = [{ id: 'DRF-EXISTING', title: 'Παλιά περιγραφή', richTitle: '',
+    clientId: 'CLI-1', client: 'Παλιό όνομα', type: 'Βλάβη', candidateOrigin: true,
+    candidateDate: '2026-11-12', candidatePriority: 'Υψηλή' }];
+  const alerts = [];
+  let saves = 0;
+  const context = vm.createContext({
+    C: [
+      { id: 'CLI-1', name: 'Πελάτης Α', active: true },
+      { id: 'CLI-2', name: 'Ανενεργός Πελάτης', active: false },
+    ],
+    CAND: candidates,
+    D: drafts,
+    $: id => elements.get(id),
+    clientKey: value => String(value || '').trim().toLowerCase(),
+    esc: value => String(value || '').replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[character]),
+    today: () => '2026-11-09',
+    setRichEditor: (target, candidate) => { target.innerHTML = candidate?.title || ''; },
+    setTimeout: callback => callback(),
+    placeCaretEnd: target => target.focus(),
+    sanitizeRichHTML: value => String(value || ''),
+    richToPlain: value => String(value || '').trim(),
+    alert: message => alerts.push(message),
+    uid: () => 'CAN-NEW',
+    save: () => { saves++; },
+    renderBoard() {},
+  });
+  vm.runInContext(source.slice(start, end), context);
+
+  context.addCandidateJob();
+  assert.equal(elements.get('candidateEditorTitle').textContent, 'Νέα εργασία');
+  assert.match(elements.get('candidateClientNames').innerHTML, /Πελάτης Α/);
+  assert.doesNotMatch(elements.get('candidateClientNames').innerHTML, /Ανενεργός Πελάτης/);
+
+  elements.get('candidateEditorClient').value = 'Πελάτης Α';
+  elements.get('candidateEditorType').value = 'Συντήρηση';
+  elements.get('candidateEditorText').innerHTML = 'Έλεγχος εγκατάστασης';
+  context.saveCandidateEditor();
+
+  assert.equal(saves, 1);
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].clientId, 'CLI-1');
+  assert.equal(candidates[0].client, 'Πελάτης Α');
+  assert.equal(candidates[0].type, 'Συντήρηση');
+  assert.equal(candidates[0].title, 'Έλεγχος εγκατάστασης');
+
+  context.openCandidateEditor('DRF-EXISTING', 'draft');
+  assert.equal(elements.get('candidateEditorClient').value, 'Πελάτης Α', 'clientId follows a renamed contact');
+  assert.equal(elements.get('candidateEditorTitle').textContent, 'Επεξεργασία εργασίας συνεργείου');
+  elements.get('candidateEditorType').value = 'Εγκατάσταση';
+  elements.get('candidateEditorText').innerHTML = 'Νέα περιγραφή συνεργείου';
+  context.saveCandidateEditor();
+  assert.equal(drafts[0].client, 'Πελάτης Α');
+  assert.equal(drafts[0].type, 'Εγκατάσταση');
+  assert.equal(drafts[0].title, 'Νέα περιγραφή συνεργείου');
+
+  context.addCandidateJob();
+  elements.get('candidateEditorClient').value = 'Τυχαίο όνομα';
+  elements.get('candidateEditorText').innerHTML = 'Δεν πρέπει να αποθηκευτεί';
+  context.saveCandidateEditor();
+  assert.equal(candidates.length, 1);
+  assert.match(alerts.at(-1), /Επαφές/);
+
+  assert.match(html, />\+ Νέα<\/button>/);
+  assert.match(html, /id="candidateEditorClient"/);
+  assert.match(html, /id="candidateEditorType"/);
+  for (const type of ['Βλάβη', 'Συντήρηση', 'Εγκατάσταση', 'Άλλο']) {
+    assert.match(html, new RegExp(`<option value="${type}">${type}<\\/option>`));
+  }
+  assert.match(source, /function editDraftJob\(id\).*openCandidateEditor\(id,'draft'\)/);
+  assert.equal(source.match(/plannedWorkDailyHtml\(d\)/g)?.length, 2);
+});
+
+test('candidate client and work type survive placement on and return from the board', () => {
+  const moveStart = source.indexOf('function boardKey');
+  const moveEnd = source.indexOf('function removeBoardItem', moveStart);
+  assert(moveStart >= 0 && moveEnd > moveStart, 'board move implementation was not found');
+  const board = {};
+  const moveContext = vm.createContext({
+    CAND: [{ id: 'CAN-1', title: 'Έλεγχος', richTitle: '', clientId: 'CLI-1',
+      client: 'Πελάτης Α', type: 'Βλάβη', date: '2026-11-12', priority: 'Υψηλή' }],
+    D: [], B: board, E: [], V: [], J: [], BOARD_CREW_COUNT: 5,
+    uid: () => 'DRF-1', save() {}, renderBoard() {}, render() {}, alert() {},
+    empLeaveInfo: () => null,
+  });
+  vm.runInContext(source.slice(moveStart, moveEnd), moveContext);
+  moveContext.moveBoardItem({ kind: 'candidate', id: 'CAN-1' }, '2026-11-12#2');
+  assert.equal(moveContext.D[0].clientId, 'CLI-1');
+  assert.equal(moveContext.D[0].client, 'Πελάτης Α');
+  assert.equal(moveContext.D[0].type, 'Βλάβη');
+  assert.deepEqual(Array.from(board['2026-11-12#2'].drafts), ['DRF-1']);
+
+  const returnStart = source.indexOf('function returnDraftToCandidates');
+  const returnEnd = source.indexOf('function returnDraftToCandidatesFromMenu', returnStart);
+  assert(returnStart >= 0 && returnEnd > returnStart, 'draft return implementation was not found');
+  const returnContext = vm.createContext({
+    D: [{ ...moveContext.D[0] }], CAND: [],
+    uid: () => 'CAN-RETURNED', nextWorkday: () => '2026-11-13', today: () => '2026-11-12',
+    removeFromAll() {}, save() {}, renderBoard() {}, render() {},
+  });
+  vm.runInContext(source.slice(returnStart, returnEnd), returnContext);
+  returnContext.returnDraftToCandidates('DRF-1', '2026-11-12#2');
+  assert.equal(returnContext.CAND[0].clientId, 'CLI-1');
+  assert.equal(returnContext.CAND[0].client, 'Πελάτης Α');
+  assert.equal(returnContext.CAND[0].type, 'Βλάβη');
 });

@@ -444,7 +444,7 @@ function moveBoardItem(d,key){
    if(!key)return;
    const c=CAND.find(x=>x.id===d.id);
    if(!c)return;
-   const draft={id:uid('DRF'),title:c.title,richTitle:c.richTitle||'',createdAt:new Date().toISOString(),candidateOrigin:true,candidateDate:c.date||key.split('#')[0],candidatePriority:c.priority||'Κανονική'};
+   const draft={id:uid('DRF'),title:c.title,richTitle:c.richTitle||'',clientId:c.clientId||'',client:c.client||'',type:c.type||'',createdAt:new Date().toISOString(),candidateOrigin:true,candidateDate:c.date||key.split('#')[0],candidatePriority:c.priority||'Κανονική'};
    D.push(draft);
    const target=boardEntry(key);
    if(!target.drafts.includes(draft.id))target.drafts.push(draft.id);
@@ -576,6 +576,9 @@ function returnDraftToCandidates(id,from=''){
    id:uid('CAN'),
    title:d.title||'',
    richTitle:d.richTitle||'',
+   clientId:d.clientId||'',
+   client:d.client||'',
+   type:d.type||'',
    date:d.candidateDate||fromDate||nextWorkday(today()),
    priority:d.candidatePriority||'Κανονική',
    createdAt:new Date().toISOString(),
@@ -597,14 +600,24 @@ function openBoardNewJob(date){
 }
 function deadlineState(j){if(!j.deadline||j.status==='Ολοκληρώθηκε'||j.status==='Ακυρώθηκε')return '';let d=Math.round((new Date(j.deadline+'T12:00:00')-new Date(today()+'T12:00:00'))/86400000);return d<0?'dead-over':d===0?'dead-today':d<=3?'dead-soon':''}
 function jobTypeClass(j){let t=(j.type||'').toLowerCase();if(j.status==='Σε αναμονή')return 'type-wait';if(t.includes('συντήρ')||t.includes('καθαρισ'))return 'type-maint';if(t.includes('εγκατάστ'))return 'type-install';if(t.includes('βλάβ')||t.includes('επισκευ'))return 'type-fault';return ''}
+function plannedWorkCardHtml(obj,icon,titleClass,fallback){
+ const client=String(obj&&obj.client||'').trim(),type=String(obj&&obj.type||'').trim();
+ if(!client&&!type)return `<div class="${titleClass} rich-board-title">${icon} ${richBoardTitle(obj,fallback)}</div>`;
+ return `<div class="${titleClass}">${icon} ${esc(client||'Χωρίς πελάτη')}</div>${type?`<span class="candidate-work-type">${esc(type)}</span>`:''}<div class="candidate-work-description rich-board-title">${richBoardTitle(obj,'Χωρίς περιγραφή')}</div>`;
+}
+function plannedWorkDailyHtml(obj){
+ const client=String(obj&&obj.client||'').trim(),type=String(obj&&obj.type||'').trim();
+ if(!client&&!type)return `<div class="daily-task-title rich-board-title">${richBoardTitle(obj,'Πρόχειρη εργασία')}</div>`;
+ return `<div class="daily-task-title">${esc(client||'Χωρίς πελάτη')}</div>${type?`<span class="candidate-work-type">${esc(type)}</span>`:''}<div class="daily-task-detail rich-board-title">${richBoardTitle(obj,'Χωρίς περιγραφή')}</div>`;
+}
 function card(kind,id,key=''){
  let obj=kind==='candidate'?CAND.find(x=>x.id===id):kind==='draft'?D.find(x=>x.id===id):kind==='job'?J.find(x=>x.id===id):kind==='emp'?E.find(x=>x.id===id):V.find(x=>x.id===id);if(!obj)return '';
  if(kind==='candidate'){
    const p=obj.priority||'Κανονική',pc=p==='Επείγουσα'?'urgent':p==='Υψηλή'?'high':'';
    const ds=candidateDateLabel(obj.date);
-   return `<div class="board-card job candidate-card" draggable="true" title="Σύρε σε ημέρα και συνεργείο" ondblclick="event.stopPropagation();editCandidateJob('${id}')" ondragstart="dragStart(event,'candidate','${id}','')"><button class="x" onclick="event.stopPropagation();deleteCandidateJob('${id}')" title="Διαγραφή">×</button><button class="candidate-edit-btn" onclick="event.stopPropagation();editCandidateJob('${id}')" title="Επεξεργασία">✎</button><div class="candidate-title rich-board-title">🟪 ${richBoardTitle(obj,'Υποψήφια εργασία')}</div><div class="candidate-meta"><span>📅 ${esc(ds)}</span>${p!=='Κανονική'?`<span class="candidate-priority ${pc}">${esc(p)}</span>`:''}</div></div>`;
+   return `<div class="board-card job candidate-card" draggable="true" title="Σύρε σε ημέρα και συνεργείο" ondblclick="event.stopPropagation();editCandidateJob('${id}')" ondragstart="dragStart(event,'candidate','${id}','')"><button class="x" onclick="event.stopPropagation();deleteCandidateJob('${id}')" title="Διαγραφή">×</button><button class="candidate-edit-btn" onclick="event.stopPropagation();editCandidateJob('${id}')" title="Επεξεργασία">✎</button>${plannedWorkCardHtml(obj,'🟪','candidate-title','Υποψήφια εργασία')}<div class="candidate-meta"><span>📅 ${esc(ds)}</span>${p!=='Κανονική'?`<span class="candidate-priority ${pc}">${esc(p)}</span>`:''}</div></div>`;
  }
- if(kind==='draft')return `<div class="board-card job draft-card" draggable="true" title="${key?'Σύρε στις Υποψήφιες για να την ξαναβγάλεις από το συνεργείο':'Σύρε στο σωστό πλαίσιο συνεργείου'}" ondblclick="event.stopPropagation();editDraftJob('${id}')" oncontextmenu="openDraftMenu(event,'${id}','${key}')" ondragstart="dragStart(event,'draft','${id}','${key}')"><button class="x" onclick="event.stopPropagation();deleteDraftJob('${id}')">×</button><div class="job-title rich-board-title">🟨 ${richBoardTitle(obj,'Πρόχειρη εργασία')}</div></div>`;
+ if(kind==='draft')return `<div class="board-card job draft-card" draggable="true" title="${key?'Σύρε στις Υποψήφιες για να την ξαναβγάλεις από το συνεργείο':'Σύρε στο σωστό πλαίσιο συνεργείου'}" ondblclick="event.stopPropagation();editDraftJob('${id}')" oncontextmenu="openDraftMenu(event,'${id}','${key}')" ondragstart="dragStart(event,'draft','${id}','${key}')"><button class="x" onclick="event.stopPropagation();deleteDraftJob('${id}')">×</button>${plannedWorkCardHtml(obj,'🟨','job-title','Πρόχειρη εργασία')}</div>`;
  if(kind==='job'){let title=obj.client||obj.code||'Χωρίς επωνυμία';return `<div class="board-card job ${deadlineState(obj)} ${jobTypeClass(obj)}" draggable="true" onclick="event.stopPropagation();editJob('${id}')" ondragstart="dragStart(event,'job','${id}','${key}')"><button class="x" onclick="event.stopPropagation();${key?`removeBoardItem('${key}','job','${id}')`:`void 0`}">${key?'×':''}</button><b class="job-title">${esc(title)}</b>${jobDetailsHtml(obj,'job-card-detail')}</div>`}
  if(kind==='veh'){let title=[obj.model,obj.plate].filter(Boolean).join(' • ')||'Χωρίς στοιχεία οχήματος';if(obj.outOfService){let problem=String(obj.problem||'Χωρίς περιγραφή προβλήματος').trim();return `<div class="board-card veh vehicle-out-card" draggable="false" onclick="event.stopPropagation()" title="ΑΚΙΝΗΤΟ — ${esc(problem)}"><b>🔴 ${esc(title)} — ΑΚΙΝΗΤΟ</b><div class="vehicle-problem-card">⚠️ ${esc(problem)}</div></div>`}return `<div class="board-card veh" draggable="true" onclick="event.stopPropagation()" ondragstart="dragStart(event,'veh','${id}','${key}')"><b>${esc(title)}</b></div>`}let title=obj.name;return `<div class="board-card ${kind}" draggable="true" onclick="event.stopPropagation()" ondragstart="dragStart(event,'${kind}','${id}','${key}')"><b>${esc(title)}</b></div>`
 }
@@ -623,37 +636,59 @@ function candidateDateLabel(ds){
   if(ds===today())return 'Σήμερα • '+d.toLocaleDateString('el-GR',{day:'2-digit',month:'2-digit'});
   return d.toLocaleDateString('el-GR',{weekday:'short',day:'2-digit',month:'2-digit'});
 }
-function addCandidateJob(){openCandidateEditor('')}
-function editCandidateJob(id){openCandidateEditor(id)}
-function openCandidateEditor(id=''){
-  const modal=$('candidateEditorModal'),text=$('candidateEditorText'),hidden=$('candidateEditorId'),date=$('candidateEditorDate'),priority=$('candidateEditorPriority'),title=$('candidateEditorTitle');
-  if(!modal||!text||!hidden||!date||!priority)return;
-  const c=id?CAND.find(x=>x.id===id):null;
+let candidateEditorTargetKind='candidate';
+function addCandidateJob(){openCandidateEditor('','candidate')}
+function editCandidateJob(id){openCandidateEditor(id,'candidate')}
+function candidateContacts(){
+ const seen=new Set();
+ return C.filter(c=>c&&c.id&&String(c.name||'').trim()&&c.active!==false).filter(c=>{const key=clientKey(c.name);if(seen.has(key))return false;seen.add(key);return true}).sort((a,b)=>String(a.name).localeCompare(String(b.name),'el'));
+}
+function refreshCandidateClientList(){const list=$('candidateClientNames');if(list)list.innerHTML=candidateContacts().map(c=>`<option value="${esc(c.name)}"></option>`).join('')}
+function candidateContactByName(name){const key=clientKey(name);return candidateContacts().find(c=>clientKey(c.name)===key)||null}
+function candidateContactForEntry(entry){const contacts=candidateContacts();return contacts.find(c=>c.id===entry?.clientId)||contacts.find(c=>clientKey(c.name)===clientKey(entry?.client))||null}
+function openCandidateEditor(id='',targetKind='candidate'){
+  const modal=$('candidateEditorModal'),text=$('candidateEditorText'),hidden=$('candidateEditorId'),client=$('candidateEditorClient'),type=$('candidateEditorType'),date=$('candidateEditorDate'),priority=$('candidateEditorPriority'),title=$('candidateEditorTitle'),subtitle=$('candidateEditorSubtitle'),hint=$('candidateEditorHint');
+  if(!modal||!text||!hidden||!client||!type||!date||!priority)return;
+  candidateEditorTargetKind=targetKind==='draft'?'draft':'candidate';
+  const c=id?(candidateEditorTargetKind==='draft'?D.find(x=>x.id===id):CAND.find(x=>x.id===id)):null;
+  const selectedContact=c?candidateContactForEntry(c):null;
+  refreshCandidateClientList();
   hidden.value=c?c.id:'';
+  client.value=c?(selectedContact?.name||c.client||''):'';
+  type.value=c?(c.type||'Βλάβη'):'Βλάβη';
   setRichEditor(text,c||{title:''});
-  date.value=c?(c.date||nextWorkday(today())):nextWorkday(today());
-  priority.value=c?(c.priority||'Κανονική'):'Κανονική';
-  if(title)title.textContent=c?'Επεξεργασία υποψήφιας εργασίας':'Νέα υποψήφια εργασία';
+  date.value=c?((candidateEditorTargetKind==='draft'?c.candidateDate:c.date)||nextWorkday(today())):nextWorkday(today());
+  priority.value=c?((candidateEditorTargetKind==='draft'?c.candidatePriority:c.priority)||'Κανονική'):'Κανονική';
+  if(title)title.textContent=candidateEditorTargetKind==='draft'?'Επεξεργασία εργασίας συνεργείου':c?'Επεξεργασία εργασίας':'Νέα εργασία';
+  if(subtitle)subtitle.textContent=candidateEditorTargetKind==='draft'?'Άλλαξε τα στοιχεία της εργασίας που βρίσκεται ήδη στο πρόγραμμα.':'Καταχώρισέ την τώρα· το συνεργείο θα το αποφασίσεις αργότερα.';
+  if(hint)hint.textContent=candidateEditorTargetKind==='draft'?'📌 Η ημέρα και το συνεργείο αλλάζουν μετακινώντας την κάρτα στον πίνακα.':'📌 Στο τέλος της ημέρας σύρε την κάρτα στο συνεργείο και στην ημέρα που αποφάσισες. Τότε γίνεται κανονική πρόχειρη εργασία του προγράμματος.';
   modal.classList.add('open');
-  setTimeout(()=>placeCaretEnd(text),40);
+  setTimeout(()=>{if(c)placeCaretEnd(text);else client.focus()},40);
 }
 function closeCandidateEditor(){
   const modal=$('candidateEditorModal');
   if(modal)modal.classList.remove('open');
+  candidateEditorTargetKind='candidate';
 }
 function saveCandidateEditor(){
-  const text=$('candidateEditorText'),hidden=$('candidateEditorId'),date=$('candidateEditorDate'),priority=$('candidateEditorPriority');
-  if(!text||!hidden||!date||!priority)return;
+  const text=$('candidateEditorText'),hidden=$('candidateEditorId'),client=$('candidateEditorClient'),type=$('candidateEditorType'),date=$('candidateEditorDate'),priority=$('candidateEditorPriority');
+  if(!text||!hidden||!client||!type||!date||!priority)return;
+  const contact=candidateContactByName(client.value);
+  if(!contact){alert('Επίλεξε όνομα πελάτη από τις Επαφές.');client.focus();return;}
+  const workType=type.value;
+  if(!['Βλάβη','Συντήρηση','Εγκατάσταση','Άλλο'].includes(workType)){alert('Επίλεξε είδος εργασίας.');type.focus();return;}
   const rich=sanitizeRichHTML(text.innerHTML||'');
   const value=richToPlain(rich);
-  if(!value){alert('Γράψε την υποψήφια εργασία πριν την αποθήκευση.');text.focus();return;}
+  if(!value){alert('Γράψε την περιγραφή της εργασίας πριν την αποθήκευση.');text.focus();return;}
   const id=hidden.value;
   if(id){
-    const c=CAND.find(x=>x.id===id);
+    const c=candidateEditorTargetKind==='draft'?D.find(x=>x.id===id):CAND.find(x=>x.id===id);
     if(!c)return closeCandidateEditor();
-    c.title=value;c.richTitle=rich;c.date=date.value||nextWorkday(today());c.priority=priority.value||'Κανονική';c.updatedAt=new Date().toISOString();
+    c.title=value;c.richTitle=rich;c.clientId=contact.id;c.client=contact.name;c.type=workType;c.updatedAt=new Date().toISOString();
+    if(candidateEditorTargetKind==='draft'){c.candidateDate=date.value||nextWorkday(today());c.candidatePriority=priority.value||'Κανονική'}
+    else{c.date=date.value||nextWorkday(today());c.priority=priority.value||'Κανονική'}
   }else{
-    CAND.push({id:uid('CAN'),title:value,richTitle:rich,date:date.value||nextWorkday(today()),priority:priority.value||'Κανονική',createdAt:new Date().toISOString()});
+    CAND.push({id:uid('CAN'),title:value,richTitle:rich,clientId:contact.id,client:contact.name,type:workType,date:date.value||nextWorkday(today()),priority:priority.value||'Κανονική',createdAt:new Date().toISOString()});
   }
   save();renderBoard();closeCandidateEditor();
 }
@@ -665,7 +700,7 @@ async function deleteCandidateJob(id){
 
 let draftEditorTargetKey='';
 function addDraftJob(key=''){openDraftEditor('',key)}
-function editDraftJob(id){openDraftEditor(id,'')}
+function editDraftJob(id){const d=D.find(x=>x.id===id);if(d&&(d.candidateOrigin||d.clientId||d.client||d.type))return openCandidateEditor(id,'draft');openDraftEditor(id,'')}
 function openDraftEditor(id='',targetKey=''){
   const modal=$('draftEditorModal'),text=$('draftEditorText'),hidden=$('draftEditorId'),title=$('draftEditorTitle');
   if(!modal||!text||!hidden)return;
@@ -884,7 +919,7 @@ function openDailyBoardView(){
    let taskNo=0,tasks='';
    drafts.forEach(d=>{
      total++;taskNo++;
-     tasks+=`<div class="daily-task" onclick="closeDailyBoardView();editDraftJob('${d.id}')"><div class="daily-task-num">${taskNo}</div><div><div class="daily-task-title">${esc(d.title||'Πρόχειρη εργασία')}</div></div><span class="daily-task-kind">ΠΡΟΧΕΙΡΗ</span></div>`;
+     tasks+=`<div class="daily-task" onclick="closeDailyBoardView();editDraftJob('${d.id}')"><div class="daily-task-num">${taskNo}</div><div>${plannedWorkDailyHtml(d)}</div><span class="daily-task-kind">ΠΡΟΧΕΙΡΗ</span></div>`;
    });
    jobs.forEach(j=>{
      total++;taskNo++;
@@ -916,7 +951,7 @@ function openCrewBoardView(){
  const resourceHtml=(empNames.length?empNames.map(n=>`<span class="daily-resource">👷 ${esc(n)}</span>`).join(''):'<span class="daily-resource">👷 Χωρίς τεχνικό</span>')+
    (vehicles.length?vehicles.map(n=>`<span class="daily-resource veh">🚐 ${esc(n)}</span>`).join(''):'<span class="daily-resource veh">🚐 Χωρίς VAN</span>');
  let no=0,tasks='';
- drafts.forEach(d=>{no++;tasks+=`<div class="daily-task" onclick="closeDailyBoardView();editDraftJob('${d.id}')"><div class="daily-task-num">${no}</div><div><div class="daily-task-title rich-board-title">${richBoardTitle(d,'Πρόχειρη εργασία')}</div></div><span class="daily-task-kind">ΠΡΟΧΕΙΡΗ</span></div>`});
+ drafts.forEach(d=>{no++;tasks+=`<div class="daily-task" onclick="closeDailyBoardView();editDraftJob('${d.id}')"><div class="daily-task-num">${no}</div><div>${plannedWorkDailyHtml(d)}</div><span class="daily-task-kind">ΠΡΟΧΕΙΡΗ</span></div>`});
  jobs.forEach(j=>{no++;const title=j.client||j.code||j.type||'Εργασία',detail=[j.task,j.notes&&'Σημειώσεις: '+j.notes,j.address].filter(Boolean).join('\n');tasks+=`<div class="daily-task" onclick="closeDailyBoardView();editJob('${j.id}')"><div class="daily-task-num">${no}</div><div><div class="daily-task-title">${esc(title)}</div>${detail?`<div class="daily-task-detail">${esc(detail)}</div>`:''}</div><span class="daily-task-kind crm">ΕΡΓΑΣΙΑ</span></div>`});
  if(titleEl)titleEl.textContent='👁 Συνεργείο '+slot;
  if(dateEl)dateEl.textContent=dt.toLocaleDateString('el-GR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})+' • '+no+' '+(no===1?'εργασία':'εργασίες');
@@ -947,7 +982,7 @@ function renderBoard(){
  const sortedCandidates=[...CAND].sort((a,b)=>(a.date||'9999-12-31').localeCompare(b.date||'9999-12-31') || (priorityRank[a.priority]??2)-(priorityRank[b.priority]??2) || String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
  const orphanHtml=orphanDrafts.length?`<div class="candidate-group-label orphan">🟨 Πρόχειρες χωρίς συνεργείο — σύρε τες στο σωστό πλαίσιο</div>${orphanDrafts.map(d=>card('draft',d.id)).join('')}`:'';
  const candidateHtml=sortedCandidates.length?`${orphanDrafts.length?'<div class="candidate-group-label">🟪 Υποψήφιες εργασίες</div>':''}${sortedCandidates.map(c=>card('candidate',c.id)).join('')}`:'';
- $('poolCandidates').innerHTML=(orphanHtml+candidateHtml)||'<span class="candidate-empty">Δεν έχεις υποψήφιες. Πάτησε <b>+ Υποψ.</b> και μάζεψε εδώ τις δουλειές που σκέφτεσαι για τις επόμενες ημέρες.</span>';
+ $('poolCandidates').innerHTML=(orphanHtml+candidateHtml)||'<span class="candidate-empty">Δεν έχεις υποψήφιες. Πάτησε <b>+ Νέα</b> και μάζεψε εδώ τις δουλειές που σκέφτεσαι για τις επόμενες ημέρες.</span>';
  if($('candidatePoolTitle'))$('candidatePoolTitle').textContent=orphanDrafts.length?'Υποψήφιες / πρόχειρες χωρίς συνεργείο':'Υποψήφιες εργασίες επόμενων ημερών';
  $('poolJobs').innerHTML=orphanDrafts.map(d=>card('draft',d.id)).join('')||'<span class="small">Δεν υπάρχουν πρόχειρες εργασίες.</span>';
  let assignedEmp=new Set(),assignedVeh=new Set();Object.entries(B).forEach(([k,x])=>{const p=k.split('#');if(p[0]===boardSelectedDate&&parseInt(p[1],10)<=BOARD_CREW_COUNT){(x.emps||[]).forEach(id=>assignedEmp.add(id));(x.vehs||[]).forEach(id=>assignedVeh.add(id))}});$('poolEmps').innerHTML=E.filter(e=>e.active!==false&&!empOnLeave(e,boardSelectedDate)&&!assignedEmp.has(e.id)).map(e=>card('emp',e.id)).join('')||'<span class="small">Κανένας διαθέσιμος.</span>';$('poolVehs').innerHTML=V.filter(v=>v.active!==false&&!assignedVeh.has(v.id)).map(v=>card('veh',v.id)).join('')||'<span class="small">Κανένα διαθέσιμο.</span>';

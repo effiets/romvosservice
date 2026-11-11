@@ -1263,7 +1263,11 @@ body.board-mode .board-cell.has-work .job-stack .board-card.job{display:block!im
 .board-candidate-section .small{font-size:9.5px;line-height:1.2;color:#64748b;margin:2px 0 4px}
 .candidate-pool{min-height:64px;max-height:150px;overflow-y:auto!important;overflow-x:hidden!important;background:#faf7ff;border-color:#c4b5fd!important}
 .candidate-card{border-left-color:#7c3aed!important;background:#faf5ff!important;cursor:grab!important}
-.candidate-card .candidate-title{display:block;color:#4c1d95!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important;padding-right:14px}.candidate-card .candidate-edit-btn{float:right;border:0;background:transparent;cursor:pointer;color:#475569;padding:0 3px;margin:0 2px 0 0;font-size:11px;line-height:1.2}.candidate-card .candidate-edit-btn:hover{color:#1d4ed8}
+.candidate-card .candidate-title{display:block;color:#4c1d95!important;white-space:pre-wrap!important;overflow-wrap:anywhere!important;padding-right:34px}.candidate-card .candidate-edit-btn{float:right;border:0;background:transparent;cursor:pointer;color:#475569;padding:0 3px;margin:0 2px 0 0;font-size:11px;line-height:1.2}.candidate-card .candidate-edit-btn:hover{color:#1d4ed8}
+.candidate-work-type{display:inline-block;margin-top:3px;padding:1px 6px;border-radius:999px;background:#ede9fe;color:#5b21b6;font-size:9px;font-weight:750;line-height:1.35}
+.candidate-work-description{margin-top:4px;color:#374151;font-size:10px;line-height:1.25;white-space:pre-wrap;overflow-wrap:anywhere}
+.draft-card .candidate-work-type{background:#fef3c7;color:#92400e}
+.draft-card .candidate-work-description{color:#4b5563}
 .candidate-card .candidate-meta{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:3px;font-size:9px;color:#6b7280}
 .candidate-card .candidate-priority{border-radius:99px;padding:1px 5px;background:#ede9fe;color:#5b21b6;font-weight:700}
 .candidate-card .candidate-priority.high{background:#fff7ed;color:#c2410c}
@@ -2119,7 +2123,7 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
   <button id="scheduleOpen" class="btn light" type="button">Κατάσταση κοινής βάσης</button>
 </div>
 </aside><main>
-<section id="board" class="section active"><div class="board-layout"><div class="board-pool"><div class="board-candidate-section"><div class="pool-head"><h3 id="candidatePoolTitle">Υποψήφιες εργασίες επόμενων ημερών</h3><button class="btn primary mini" onclick="addCandidateJob()">+ Υποψ.</button></div><div class="small">Τις μαζεύεις μέσα στη μέρα και τις σέρνεις στο συνεργείο όταν κλειδώσεις το πρόγραμμα. Μπορείς και να σύρεις εδώ πίσω μια εργασία από συνεργείο.</div><div id="poolCandidates" class="drop-pool candidate-pool" data-kind="candidate"></div></div><div id="poolJobs" class="drop-pool jobs-pool" data-kind="draft" style="display:none!important" aria-hidden="true"></div><div class="resource-bank"><h3>Διαθέσιμοι για την επιλεγμένη ημέρα</h3><div class="bank-label">👷 Τεχνικοί</div><div id="poolEmps" class="drop-pool resource-pool" data-kind="emp"></div><div class="bank-label">🚐 VAN</div><div id="poolVehs" class="drop-pool resource-pool" data-kind="veh"></div></div></div><div class="board-right"><div class="top"><div><h1>Πίνακας Κίνησης Συνεργείων</h1><div class="small">Σχεδιασμός ημέρας και επόμενων ημερών: εργασία, τεχνικοί και VAN.</div></div><div class="actions board-head-actions"><div class="board-week-nav"><button class="btn light" onclick="boardPrevWeek()">◀ Προηγούμενη</button><button class="btn light" onclick="boardNextWeek()">Επόμενη ▶</button></div><button class="btn primary" onclick="boardToday()">Σήμερα</button><button class="btn primary board-planner-fullscreen-open" type="button" onclick="openBoardPlannerFullscreen()" title="Πλήρης οθόνη προγραμματισμού">⛶ Πλήρης οθόνη</button><button class="btn danger board-planner-fullscreen-close" type="button" onclick="closeBoardPlannerFullscreen()" title="Κλείσιμο πλήρους οθόνης">✕ Κλείσιμο</button><button class="btn light" type="button" onclick="openDailyBoardView()">👁 Εργασίες ημέρας</button><div class="board-crew-tools"><select id="boardCrewSelect" title="Επίλεξε συνεργείο"><option value="1">Συνεργείο 1</option><option value="2">Συνεργείο 2</option><option value="3">Συνεργείο 3</option><option value="4">Συνεργείο 4</option><option value="5">Συνεργείο 5</option></select><button class="btn light" type="button" onclick="openCrewBoardView()" title="Προβολή μόνο του επιλεγμένου συνεργείου">👁 Προβολή</button><button class="btn light" type="button" onclick="printSelectedCrew()" title="Εκτύπωση μόνο του επιλεγμένου συνεργείου">🖨️ Εκτύπωση</button></div><button class="btn light" type="button" onclick="printMovementDay()">🖨️ Ημέρα</button><button class="btn light" type="button" onclick="printMovementBoard()">🖨️ Εβδομάδα / PDF</button></div></div><div class="availability-bar">
+<section id="board" class="section active"><div class="board-layout"><div class="board-pool"><div class="board-candidate-section"><div class="pool-head"><h3 id="candidatePoolTitle">Υποψήφιες εργασίες επόμενων ημερών</h3><button class="btn primary mini" onclick="addCandidateJob()">+ Νέα</button></div><div class="small">Τις μαζεύεις μέσα στη μέρα και τις σέρνεις στο συνεργείο όταν κλειδώσεις το πρόγραμμα. Μπορείς και να σύρεις εδώ πίσω μια εργασία από συνεργείο.</div><div id="poolCandidates" class="drop-pool candidate-pool" data-kind="candidate"></div></div><div id="poolJobs" class="drop-pool jobs-pool" data-kind="draft" style="display:none!important" aria-hidden="true"></div><div class="resource-bank"><h3>Διαθέσιμοι για την επιλεγμένη ημέρα</h3><div class="bank-label">👷 Τεχνικοί</div><div id="poolEmps" class="drop-pool resource-pool" data-kind="emp"></div><div class="bank-label">🚐 VAN</div><div id="poolVehs" class="drop-pool resource-pool" data-kind="veh"></div></div></div><div class="board-right"><div class="top"><div><h1>Πίνακας Κίνησης Συνεργείων</h1><div class="small">Σχεδιασμός ημέρας και επόμενων ημερών: εργασία, τεχνικοί και VAN.</div></div><div class="actions board-head-actions"><div class="board-week-nav"><button class="btn light" onclick="boardPrevWeek()">◀ Προηγούμενη</button><button class="btn light" onclick="boardNextWeek()">Επόμενη ▶</button></div><button class="btn primary" onclick="boardToday()">Σήμερα</button><button class="btn primary board-planner-fullscreen-open" type="button" onclick="openBoardPlannerFullscreen()" title="Πλήρης οθόνη προγραμματισμού">⛶ Πλήρης οθόνη</button><button class="btn danger board-planner-fullscreen-close" type="button" onclick="closeBoardPlannerFullscreen()" title="Κλείσιμο πλήρους οθόνης">✕ Κλείσιμο</button><button class="btn light" type="button" onclick="openDailyBoardView()">👁 Εργασίες ημέρας</button><div class="board-crew-tools"><select id="boardCrewSelect" title="Επίλεξε συνεργείο"><option value="1">Συνεργείο 1</option><option value="2">Συνεργείο 2</option><option value="3">Συνεργείο 3</option><option value="4">Συνεργείο 4</option><option value="5">Συνεργείο 5</option></select><button class="btn light" type="button" onclick="openCrewBoardView()" title="Προβολή μόνο του επιλεγμένου συνεργείου">👁 Προβολή</button><button class="btn light" type="button" onclick="printSelectedCrew()" title="Εκτύπωση μόνο του επιλεγμένου συνεργείου">🖨️ Εκτύπωση</button></div><button class="btn light" type="button" onclick="printMovementDay()">🖨️ Ημέρα</button><button class="btn light" type="button" onclick="printMovementBoard()">🖨️ Εβδομάδα / PDF</button></div></div><div class="availability-bar">
 <div class="av-card av-day-summary"><span class="av-day-label">Επιλεγμένη ημέρα</span><b id="avDay">—</b><span class="av-job-inline">Εργασίες <strong id="avJobCount">0</strong></span></div>
 <div class="av-card">Διαθέσιμοι τεχνικοί<b id="avEmpCount">0</b><div id="avEmpList" class="av-list"></div></div>
 <div class="av-card">Σε άδεια<b id="avLeaveCount">0</b><div id="avLeaveList" class="av-list"></div></div>
@@ -2359,19 +2363,35 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
   <div class="box candidate-editor-box">
     <div class="row">
       <div>
-        <h2 id="candidateEditorTitle">Υποψήφια εργασία</h2>
-        <div class="small">Καταχώρισέ την τώρα· το συνεργείο θα το αποφασίσεις αργότερα.</div>
+        <h2 id="candidateEditorTitle">Νέα εργασία</h2>
+        <div class="small" id="candidateEditorSubtitle">Καταχώρισέ την τώρα· το συνεργείο θα το αποφασίσεις αργότερα.</div>
       </div>
       <button class="btn light" type="button" onclick="closeCandidateEditor()">✕</button>
     </div>
     <input type="hidden" id="candidateEditorId">
+    <div class="candidate-editor-grid">
+      <div class="field">
+        <label for="candidateEditorClient">Όνομα πελάτη</label>
+        <input id="candidateEditorClient" list="candidateClientNames" autocomplete="off" placeholder="Επίλεξε πελάτη από τις Επαφές">
+        <datalist id="candidateClientNames"></datalist>
+      </div>
+      <div class="field">
+        <label for="candidateEditorType">Είδος εργασίας</label>
+        <select id="candidateEditorType">
+          <option value="Βλάβη">Βλάβη</option>
+          <option value="Συντήρηση">Συντήρηση</option>
+          <option value="Εγκατάσταση">Εγκατάσταση</option>
+          <option value="Άλλο">Άλλο</option>
+        </select>
+      </div>
+    </div>
     <div class="field" style="margin-top:10px">
-      <label>Εργασία</label>
+      <label>Περιγραφή εργασίας</label>
       <div class="rich-note-toolbar" aria-label="Μορφοποίηση κειμένου">
         <button type="button" class="rich-format-btn" onmousedown="event.preventDefault();formatRichText('candidateEditorText','bold')" title="Έντονα γράμματα"><b>B</b></button>
         <button type="button" class="rich-format-btn red" onmousedown="event.preventDefault();formatRichText('candidateEditorText','red')" title="Κόκκινο κείμενο">Κόκκινο</button><button type="button" class="rich-format-btn" onmousedown="event.preventDefault();formatRichText('candidateEditorText','black')" title="Επαναφορά σε μαύρο κείμενο">Μαύρο</button>
       </div>
-      <div id="candidateEditorText" class="candidate-editor-textarea rich-note-editor" contenteditable="true" data-placeholder="π.χ. Lidl Μαλακοπής — έλεγχος διαρροής / καθαρισμός αντλιών"></div>
+      <div id="candidateEditorText" class="candidate-editor-textarea rich-note-editor" contenteditable="true" data-placeholder="π.χ. Έλεγχος διαρροής / καθαρισμός αντλιών"></div>
     </div>
     <div class="candidate-editor-grid">
       <div class="field">
@@ -2387,7 +2407,7 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
         </select>
       </div>
     </div>
-    <div class="candidate-editor-hint">📌 Στο τέλος της ημέρας σύρε την κάρτα στο συνεργείο και στην ημέρα που αποφάσισες. Τότε γίνεται κανονική πρόχειρη εργασία του προγράμματος.</div>
+    <div class="candidate-editor-hint" id="candidateEditorHint">📌 Στο τέλος της ημέρας σύρε την κάρτα στο συνεργείο και στην ημέρα που αποφάσισες. Τότε γίνεται κανονική πρόχειρη εργασία του προγράμματος.</div>
     <div class="actions" style="justify-content:flex-end;margin-top:10px">
       <button class="btn light" type="button" onclick="closeCandidateEditor()">Άκυρο</button>
       <button class="btn primary" type="button" onclick="saveCandidateEditor()" style="min-width:110px">Αποθήκευση</button>
