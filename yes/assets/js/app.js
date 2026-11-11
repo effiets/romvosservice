@@ -643,8 +643,8 @@ function candidateContacts(){
  const seen=new Set();
  return C.filter(c=>c&&c.id&&String(c.name||'').trim()&&c.active!==false).filter(c=>{const key=clientKey(c.name);if(seen.has(key))return false;seen.add(key);return true}).sort((a,b)=>String(a.name).localeCompare(String(b.name),'el'));
 }
-function refreshCandidateClientList(){const list=$('candidateClientNames');if(list)list.innerHTML=candidateContacts().map(c=>`<option value="${esc(c.name)}"></option>`).join('')}
-function candidateContactByName(name){const key=clientKey(name);return candidateContacts().find(c=>clientKey(c.name)===key)||null}
+function refreshCandidateClientList(){const select=$('candidateEditorClient');if(select)select.innerHTML='<option value="">— Επιλογή από τις Επαφές της εφαρμογής —</option>'+candidateContacts().map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}
+function candidateContactById(id){return candidateContacts().find(c=>String(c.id)===String(id||''))||null}
 function candidateContactForEntry(entry){const contacts=candidateContacts();return contacts.find(c=>c.id===entry?.clientId)||contacts.find(c=>clientKey(c.name)===clientKey(entry?.client))||null}
 function openCandidateEditor(id='',targetKind='candidate'){
   const modal=$('candidateEditorModal'),text=$('candidateEditorText'),hidden=$('candidateEditorId'),client=$('candidateEditorClient'),type=$('candidateEditorType'),date=$('candidateEditorDate'),priority=$('candidateEditorPriority'),title=$('candidateEditorTitle'),subtitle=$('candidateEditorSubtitle'),hint=$('candidateEditorHint');
@@ -654,7 +654,7 @@ function openCandidateEditor(id='',targetKind='candidate'){
   const selectedContact=c?candidateContactForEntry(c):null;
   refreshCandidateClientList();
   hidden.value=c?c.id:'';
-  client.value=c?(selectedContact?.name||c.client||''):'';
+  client.value=c?(selectedContact?.id||''):'';
   type.value=c?(c.type||'Βλάβη'):'Βλάβη';
   setRichEditor(text,c||{title:''});
   date.value=c?((candidateEditorTargetKind==='draft'?c.candidateDate:c.date)||nextWorkday(today())):nextWorkday(today());
@@ -673,8 +673,8 @@ function closeCandidateEditor(){
 function saveCandidateEditor(){
   const text=$('candidateEditorText'),hidden=$('candidateEditorId'),client=$('candidateEditorClient'),type=$('candidateEditorType'),date=$('candidateEditorDate'),priority=$('candidateEditorPriority');
   if(!text||!hidden||!client||!type||!date||!priority)return;
-  const contact=candidateContactByName(client.value);
-  if(!contact){alert('Επίλεξε όνομα πελάτη από τις Επαφές.');client.focus();return;}
+  const contact=candidateContactById(client.value);
+  if(!contact){alert('Επίλεξε πελάτη από τις Επαφές της εφαρμογής.');client.focus();return;}
   const workType=type.value;
   if(!['Βλάβη','Συντήρηση','Εγκατάσταση','Άλλο'].includes(workType)){alert('Επίλεξε είδος εργασίας.');type.focus();return;}
   const rich=sanitizeRichHTML(text.innerHTML||'');

@@ -90,7 +90,6 @@ test('new candidate work selects an active contact and stores the requested work
     ['candidateEditorDate', element('')],
     ['candidateEditorPriority', element('Κανονική')],
     ['candidateEditorTitle', element('')],
-    ['candidateClientNames', element('')],
   ]);
   const candidates = [];
   const drafts = [{ id: 'DRF-EXISTING', title: 'Παλιά περιγραφή', richTitle: '',
@@ -125,10 +124,10 @@ test('new candidate work selects an active contact and stores the requested work
 
   context.addCandidateJob();
   assert.equal(elements.get('candidateEditorTitle').textContent, 'Νέα εργασία');
-  assert.match(elements.get('candidateClientNames').innerHTML, /Πελάτης Α/);
-  assert.doesNotMatch(elements.get('candidateClientNames').innerHTML, /Ανενεργός Πελάτης/);
+  assert.match(elements.get('candidateEditorClient').innerHTML, /value="CLI-1">Πελάτης Α/);
+  assert.doesNotMatch(elements.get('candidateEditorClient').innerHTML, /Ανενεργός Πελάτης/);
 
-  elements.get('candidateEditorClient').value = 'Πελάτης Α';
+  elements.get('candidateEditorClient').value = 'CLI-1';
   elements.get('candidateEditorType').value = 'Συντήρηση';
   elements.get('candidateEditorText').innerHTML = 'Έλεγχος εγκατάστασης';
   context.saveCandidateEditor();
@@ -141,7 +140,7 @@ test('new candidate work selects an active contact and stores the requested work
   assert.equal(candidates[0].title, 'Έλεγχος εγκατάστασης');
 
   context.openCandidateEditor('DRF-EXISTING', 'draft');
-  assert.equal(elements.get('candidateEditorClient').value, 'Πελάτης Α', 'clientId follows a renamed contact');
+  assert.equal(elements.get('candidateEditorClient').value, 'CLI-1', 'clientId follows a renamed contact');
   assert.equal(elements.get('candidateEditorTitle').textContent, 'Επεξεργασία εργασίας συνεργείου');
   elements.get('candidateEditorType').value = 'Εγκατάσταση';
   elements.get('candidateEditorText').innerHTML = 'Νέα περιγραφή συνεργείου';
@@ -151,14 +150,15 @@ test('new candidate work selects an active contact and stores the requested work
   assert.equal(drafts[0].title, 'Νέα περιγραφή συνεργείου');
 
   context.addCandidateJob();
-  elements.get('candidateEditorClient').value = 'Τυχαίο όνομα';
+  elements.get('candidateEditorClient').value = 'CLI-UNKNOWN';
   elements.get('candidateEditorText').innerHTML = 'Δεν πρέπει να αποθηκευτεί';
   context.saveCandidateEditor();
   assert.equal(candidates.length, 1);
   assert.match(alerts.at(-1), /Επαφές/);
 
   assert.match(html, />\+ Νέα<\/button>/);
-  assert.match(html, /id="candidateEditorClient"/);
+  assert.match(html, /<select id="candidateEditorClient">/);
+  assert.doesNotMatch(html, /candidateClientNames|list="candidateClientNames"/);
   assert.match(html, /id="candidateEditorType"/);
   for (const type of ['Βλάβη', 'Συντήρηση', 'Εγκατάσταση', 'Άλλο']) {
     assert.match(html, new RegExp(`<option value="${type}">${type}<\\/option>`));

@@ -2372,8 +2372,9 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
     <div class="candidate-editor-grid">
       <div class="field">
         <label for="candidateEditorClient">Όνομα πελάτη</label>
-        <input id="candidateEditorClient" list="candidateClientNames" autocomplete="off" placeholder="Επίλεξε πελάτη από τις Επαφές">
-        <datalist id="candidateClientNames"></datalist>
+        <select id="candidateEditorClient">
+          <option value="">— Επιλογή από τις Επαφές της εφαρμογής —</option>
+        </select>
       </div>
       <div class="field">
         <label for="candidateEditorType">Είδος εργασίας</label>
