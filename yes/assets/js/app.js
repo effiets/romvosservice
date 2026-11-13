@@ -637,24 +637,47 @@ function candidateDateLabel(ds){
   return d.toLocaleDateString('el-GR',{weekday:'short',day:'2-digit',month:'2-digit'});
 }
 let candidateEditorTargetKind='candidate';
+let candidateContactPickerResults=[];
 function addCandidateJob(){openCandidateEditor('','candidate')}
 function editCandidateJob(id){openCandidateEditor(id,'candidate')}
+function candidateContactInactive(c){return c?.active===false||c?.active===0||String(c?.active??'').trim().toLowerCase()==='false'}
+function candidateContactChain(c){const s=String((c?.category||'')+' '+(c?.name||'')).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();if(s.includes('lidl'))return'lidl';if(s.includes('μασουτ')||s.includes('masout'))return'masoutis';if(s.includes('electra')||s.includes('ηλεκτρα'))return'electra';return'other'}
+function candidateContactChainLabel(c){return({lidl:'Lidl',masoutis:'Μασούτης',electra:'Electra',other:String(c?.category||'Λοιπή επαφή').trim()||'Λοιπή επαφή'})[candidateContactChain(c)]}
 function candidateContacts(){
- const seen=new Set();
- return C.filter(c=>c&&c.id&&String(c.name||'').trim()&&c.active!==false).filter(c=>{const key=clientKey(c.name);if(seen.has(key))return false;seen.add(key);return true}).sort((a,b)=>String(a.name).localeCompare(String(b.name),'el'));
+ const seen=new Set(),rank={lidl:0,masoutis:1,electra:2,other:3};
+ return (Array.isArray(C)?C:[]).filter(c=>c&&c.id&&String(c.name||'').trim()&&!candidateContactInactive(c)).filter(c=>{const key=String(c.id);if(seen.has(key))return false;seen.add(key);return true}).sort((a,b)=>(rank[candidateContactChain(a)]??3)-(rank[candidateContactChain(b)]??3)||String(a.regionCode||'').localeCompare(String(b.regionCode||''),undefined,{numeric:true})||String(a.name).localeCompare(String(b.name),'el'));
 }
-function refreshCandidateClientList(){const select=$('candidateEditorClient');if(select)select.innerHTML='<option value="">— Επιλογή από τις Επαφές της εφαρμογής —</option>'+candidateContacts().map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('')}
 function candidateContactById(id){return candidateContacts().find(c=>String(c.id)===String(id||''))||null}
-function candidateContactForEntry(entry){const contacts=candidateContacts();return contacts.find(c=>c.id===entry?.clientId)||contacts.find(c=>clientKey(c.name)===clientKey(entry?.client))||null}
+function candidateContactForEntry(entry){const contacts=candidateContacts();return contacts.find(c=>String(c.id)===String(entry?.clientId??''))||contacts.find(c=>clientKey(c.name)===clientKey(entry?.client))||null}
+function candidateContactMeta(c){return[candidateContactChainLabel(c),c?.storeNo,c?.city,c?.regionCode&&('WH '+c.regionCode)].filter(Boolean).join(' • ')}
+function candidateContactSearchText(c){return[c?.name,c?.category,c?.storeNo,c?.city,c?.address,c?.phone,c?.region,c?.regionCode,c?.facilityManager,c?.facilityAssistant,c?.maintenanceOwner].filter(Boolean).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
+function setCandidateEditorContact(contact){
+ const input=$('candidateEditorClient'),button=$('candidateEditorClientButton'),label=$('candidateEditorClientLabel'),meta=$('candidateEditorClientMeta');
+ if(input)input.value=contact?.id||'';
+ if(label)label.textContent=contact?.name||'— Επιλογή από τις Επαφές εφαρμογής —';
+ if(meta)meta.textContent=contact?candidateContactMeta(contact):'Lidl, Μασούτης, Electra και λοιπές επαφές';
+ if(button)button.classList.toggle('selected',!!contact);
+}
+function openCandidateContactPicker(){
+ const modal=$('candidateContactPickerModal'),search=$('candidateContactSearch');if(!modal)return;
+ if(search)search.value='';renderCandidateContactPicker();modal.classList.add('open');setTimeout(()=>search?.focus(),30);
+}
+function closeCandidateContactPicker(){const modal=$('candidateContactPickerModal');if(modal)modal.classList.remove('open')}
+function renderCandidateContactPicker(){
+ const list=$('candidateContactPickerList');if(!list)return;
+ const q=String($('candidateContactSearch')?.value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+ candidateContactPickerResults=candidateContacts().filter(c=>!q||candidateContactSearchText(c).includes(q));
+ list.innerHTML=candidateContactPickerResults.length?candidateContactPickerResults.map((c,i)=>`<button class="candidate-contact-option" type="button" onclick="selectCandidateContactAt(${i})"><b>${esc(c.name)}</b><span>${esc(candidateContactMeta(c)||'Επαφή εφαρμογής')}</span></button>`).join(''):'<div class="candidate-contact-picker-empty">Δεν βρέθηκε ενεργή επαφή με αυτά τα στοιχεία.</div>';
+}
+function selectCandidateContactAt(index){const contact=candidateContactPickerResults[index];if(!contact)return;setCandidateEditorContact(contact);closeCandidateContactPicker();$('candidateEditorClientButton')?.focus()}
 function openCandidateEditor(id='',targetKind='candidate'){
   const modal=$('candidateEditorModal'),text=$('candidateEditorText'),hidden=$('candidateEditorId'),client=$('candidateEditorClient'),type=$('candidateEditorType'),date=$('candidateEditorDate'),priority=$('candidateEditorPriority'),title=$('candidateEditorTitle'),subtitle=$('candidateEditorSubtitle'),hint=$('candidateEditorHint');
   if(!modal||!text||!hidden||!client||!type||!date||!priority)return;
   candidateEditorTargetKind=targetKind==='draft'?'draft':'candidate';
   const c=id?(candidateEditorTargetKind==='draft'?D.find(x=>x.id===id):CAND.find(x=>x.id===id)):null;
   const selectedContact=c?candidateContactForEntry(c):null;
-  refreshCandidateClientList();
   hidden.value=c?c.id:'';
-  client.value=c?(selectedContact?.id||''):'';
+  setCandidateEditorContact(selectedContact);
   type.value=c?(c.type||'Βλάβη'):'Βλάβη';
   setRichEditor(text,c||{title:''});
   date.value=c?((candidateEditorTargetKind==='draft'?c.candidateDate:c.date)||nextWorkday(today())):nextWorkday(today());
@@ -663,18 +686,19 @@ function openCandidateEditor(id='',targetKind='candidate'){
   if(subtitle)subtitle.textContent=candidateEditorTargetKind==='draft'?'Άλλαξε τα στοιχεία της εργασίας που βρίσκεται ήδη στο πρόγραμμα.':'Καταχώρισέ την τώρα· το συνεργείο θα το αποφασίσεις αργότερα.';
   if(hint)hint.textContent=candidateEditorTargetKind==='draft'?'📌 Η ημέρα και το συνεργείο αλλάζουν μετακινώντας την κάρτα στον πίνακα.':'📌 Στο τέλος της ημέρας σύρε την κάρτα στο συνεργείο και στην ημέρα που αποφάσισες. Τότε γίνεται κανονική πρόχειρη εργασία του προγράμματος.';
   modal.classList.add('open');
-  setTimeout(()=>{if(c)placeCaretEnd(text);else client.focus()},40);
+  setTimeout(()=>{if(c)placeCaretEnd(text);else $('candidateEditorClientButton')?.focus()},40);
 }
 function closeCandidateEditor(){
   const modal=$('candidateEditorModal');
   if(modal)modal.classList.remove('open');
+  closeCandidateContactPicker();
   candidateEditorTargetKind='candidate';
 }
 function saveCandidateEditor(){
   const text=$('candidateEditorText'),hidden=$('candidateEditorId'),client=$('candidateEditorClient'),type=$('candidateEditorType'),date=$('candidateEditorDate'),priority=$('candidateEditorPriority');
   if(!text||!hidden||!client||!type||!date||!priority)return;
   const contact=candidateContactById(client.value);
-  if(!contact){alert('Επίλεξε πελάτη από τις Επαφές της εφαρμογής.');client.focus();return;}
+  if(!contact){alert('Επίλεξε πελάτη από τις Επαφές της εφαρμογής.');openCandidateContactPicker();return;}
   const workType=type.value;
   if(!['Βλάβη','Συντήρηση','Εγκατάσταση','Άλλο'].includes(workType)){alert('Επίλεξε είδος εργασίας.');type.focus();return;}
   const rich=sanitizeRichHTML(text.innerHTML||'');
@@ -838,6 +862,12 @@ document.addEventListener('keydown',ev=>{
 document.addEventListener('keydown',ev=>{
   const modal=$('candidateEditorModal');
   if(!modal||!modal.classList.contains('open'))return;
+  const picker=$('candidateContactPickerModal');
+  if(picker?.classList.contains('open')){
+    if(ev.key==='Escape'){ev.preventDefault();ev.stopImmediatePropagation();closeCandidateContactPicker();}
+    else if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'){ev.preventDefault();ev.stopImmediatePropagation();}
+    return;
+  }
   if(ev.key==='Escape'){ev.preventDefault();closeCandidateEditor();return;}
   if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'){ev.preventDefault();saveCandidateEditor();}
 });

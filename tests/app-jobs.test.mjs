@@ -79,17 +79,31 @@ test('new candidate work selects an active contact and stores the requested work
   const end = source.indexOf('async function deleteCandidateJob', start);
   assert(start >= 0 && end > start, 'candidate editor implementation was not found');
 
-  const element = value => ({ value, innerHTML: '', textContent: '', focusCount: 0,
-    focus() { this.focusCount++; }, classList: { add() {}, remove() {} } });
+  const element = value => {
+    const classes = new Set();
+    return { value, innerHTML: '', textContent: '', focusCount: 0,
+      focus() { this.focusCount++; },
+      classList: {
+        add: name => classes.add(name), remove: name => classes.delete(name),
+        toggle(name, force) { const on = force === undefined ? !classes.has(name) : !!force; if (on) classes.add(name); else classes.delete(name); return on; },
+        contains: name => classes.has(name),
+      } };
+  };
   const elements = new Map([
     ['candidateEditorModal', element('')],
     ['candidateEditorText', element('')],
     ['candidateEditorId', element('')],
     ['candidateEditorClient', element('')],
+    ['candidateEditorClientButton', element('')],
+    ['candidateEditorClientLabel', element('')],
+    ['candidateEditorClientMeta', element('')],
     ['candidateEditorType', element('Βλάβη')],
     ['candidateEditorDate', element('')],
     ['candidateEditorPriority', element('Κανονική')],
     ['candidateEditorTitle', element('')],
+    ['candidateContactPickerModal', element('')],
+    ['candidateContactSearch', element('')],
+    ['candidateContactPickerList', element('')],
   ]);
   const candidates = [];
   const drafts = [{ id: 'DRF-EXISTING', title: 'Παλιά περιγραφή', richTitle: '',
@@ -99,8 +113,9 @@ test('new candidate work selects an active contact and stores the requested work
   let saves = 0;
   const context = vm.createContext({
     C: [
-      { id: 'CLI-1', name: 'Πελάτης Α', active: true },
-      { id: 'CLI-2', name: 'Ανενεργός Πελάτης', active: false },
+      { id: 'CLI-3', name: 'ΜΑΣΟΥΤΗΣ 101 - Θεσσαλονίκη', category: 'Μασούτης', storeNo: '101', city: 'Θεσσαλονίκη', active: true },
+      { id: 'CLI-1', name: 'LIDL GR0001 - Σέρρες-Σιδ. Σταθμός', category: 'LIDL', storeNo: 'GR0001', city: 'Σέρρες', regionCode: '310', active: true },
+      { id: 'CLI-2', name: 'Ανενεργό κατάστημα', active: 'false' },
     ],
     CAND: candidates,
     D: drafts,
@@ -124,10 +139,20 @@ test('new candidate work selects an active contact and stores the requested work
 
   context.addCandidateJob();
   assert.equal(elements.get('candidateEditorTitle').textContent, 'Νέα εργασία');
-  assert.match(elements.get('candidateEditorClient').innerHTML, /value="CLI-1">Πελάτης Α/);
-  assert.doesNotMatch(elements.get('candidateEditorClient').innerHTML, /Ανενεργός Πελάτης/);
+  assert.equal(elements.get('candidateEditorClientButton').focusCount, 1);
+  assert.match(elements.get('candidateEditorClientLabel').textContent, /Επαφές εφαρμογής/);
+  context.openCandidateContactPicker();
+  assert.match(elements.get('candidateContactPickerList').innerHTML, /LIDL GR0001/);
+  assert.match(elements.get('candidateContactPickerList').innerHTML, /ΜΑΣΟΥΤΗΣ 101/);
+  assert.doesNotMatch(elements.get('candidateContactPickerList').innerHTML, /Ανενεργό κατάστημα/);
+  assert(elements.get('candidateContactPickerList').innerHTML.indexOf('LIDL GR0001') < elements.get('candidateContactPickerList').innerHTML.indexOf('ΜΑΣΟΥΤΗΣ 101'));
+  elements.get('candidateContactSearch').value = 'gr0001';
+  context.renderCandidateContactPicker();
+  context.selectCandidateContactAt(0);
 
-  elements.get('candidateEditorClient').value = 'CLI-1';
+  assert.equal(elements.get('candidateEditorClient').value, 'CLI-1');
+  assert.equal(elements.get('candidateEditorClientLabel').textContent, 'LIDL GR0001 - Σέρρες-Σιδ. Σταθμός');
+  assert.match(elements.get('candidateEditorClientMeta').textContent, /Lidl • GR0001 • Σέρρες • WH 310/);
   elements.get('candidateEditorType').value = 'Συντήρηση';
   elements.get('candidateEditorText').innerHTML = 'Έλεγχος εγκατάστασης';
   context.saveCandidateEditor();
@@ -135,7 +160,7 @@ test('new candidate work selects an active contact and stores the requested work
   assert.equal(saves, 1);
   assert.equal(candidates.length, 1);
   assert.equal(candidates[0].clientId, 'CLI-1');
-  assert.equal(candidates[0].client, 'Πελάτης Α');
+  assert.equal(candidates[0].client, 'LIDL GR0001 - Σέρρες-Σιδ. Σταθμός');
   assert.equal(candidates[0].type, 'Συντήρηση');
   assert.equal(candidates[0].title, 'Έλεγχος εγκατάστασης');
 
@@ -145,7 +170,7 @@ test('new candidate work selects an active contact and stores the requested work
   elements.get('candidateEditorType').value = 'Εγκατάσταση';
   elements.get('candidateEditorText').innerHTML = 'Νέα περιγραφή συνεργείου';
   context.saveCandidateEditor();
-  assert.equal(drafts[0].client, 'Πελάτης Α');
+  assert.equal(drafts[0].client, 'LIDL GR0001 - Σέρρες-Σιδ. Σταθμός');
   assert.equal(drafts[0].type, 'Εγκατάσταση');
   assert.equal(drafts[0].title, 'Νέα περιγραφή συνεργείου');
 
@@ -155,15 +180,19 @@ test('new candidate work selects an active contact and stores the requested work
   context.saveCandidateEditor();
   assert.equal(candidates.length, 1);
   assert.match(alerts.at(-1), /Επαφές/);
+  assert.equal(elements.get('candidateContactPickerModal').classList.contains('open'), true);
 
   assert.match(html, />\+ Νέα<\/button>/);
-  assert.match(html, /<select id="candidateEditorClient">/);
-  assert.doesNotMatch(html, /candidateClientNames|list="candidateClientNames"/);
+  assert.match(html, /<input type="hidden" id="candidateEditorClient">/);
+  assert.match(html, /id="candidateEditorClientButton"/);
+  assert.match(html, /id="candidateContactPickerModal"/);
+  assert.doesNotMatch(html, /<select id="candidateEditorClient"|candidateClientNames|list="candidateClientNames"/);
   assert.match(html, /id="candidateEditorType"/);
   for (const type of ['Βλάβη', 'Συντήρηση', 'Εγκατάσταση', 'Άλλο']) {
     assert.match(html, new RegExp(`<option value="${type}">${type}<\\/option>`));
   }
   assert.match(source, /function editDraftJob\(id\).*openCandidateEditor\(id,'draft'\)/);
+  assert.match(source, /candidateContactPickerModal[\s\S]*stopImmediatePropagation/);
   assert.equal(source.match(/plannedWorkDailyHtml\(d\)/g)?.length, 2);
 });
 

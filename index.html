@@ -1268,6 +1268,17 @@ body.board-mode .board-cell.has-work .job-stack .board-card.job{display:block!im
 .candidate-work-description{margin-top:4px;color:#374151;font-size:10px;line-height:1.25;white-space:pre-wrap;overflow-wrap:anywhere}
 .draft-card .candidate-work-type{background:#fef3c7;color:#92400e}
 .draft-card .candidate-work-description{color:#4b5563}
+.candidate-contact-trigger{box-sizing:border-box;width:100%;min-height:42px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#64748b;text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:2px;font:inherit}
+.candidate-contact-trigger:hover,.candidate-contact-trigger:focus{border-color:#2563eb;box-shadow:0 0 0 2px #2563eb1f;outline:none}
+.candidate-contact-trigger.selected{color:#0f172a}
+.candidate-contact-trigger-name{font-size:13px;font-weight:750;line-height:1.25}
+.candidate-contact-trigger-meta{font-size:10px;color:#64748b;line-height:1.2}
+.candidate-contact-picker-box{width:min(820px,96vw)!important;padding:16px!important}
+.candidate-contact-picker-results{margin-top:10px;max-height:min(58vh,560px);overflow:auto;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;padding:5px}
+.candidate-contact-option{width:100%;display:flex;flex-direction:column;gap:3px;padding:9px 11px;border:0;border-bottom:1px solid #e2e8f0;background:#fff;text-align:left;cursor:pointer;color:#0f172a}
+.candidate-contact-option:last-child{border-bottom:0}.candidate-contact-option:hover,.candidate-contact-option:focus{background:#eff6ff;outline:2px solid #93c5fd;outline-offset:-2px}
+.candidate-contact-option b{font-size:13px;line-height:1.25}.candidate-contact-option span{font-size:10px;color:#64748b;line-height:1.25}
+.candidate-contact-picker-empty{padding:18px;text-align:center;color:#64748b;font-size:12px}
 .candidate-card .candidate-meta{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:3px;font-size:9px;color:#6b7280}
 .candidate-card .candidate-priority{border-radius:99px;padding:1px 5px;background:#ede9fe;color:#5b21b6;font-weight:700}
 .candidate-card .candidate-priority.high{background:#fff7ed;color:#c2410c}
@@ -2371,10 +2382,12 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
     <input type="hidden" id="candidateEditorId">
     <div class="candidate-editor-grid">
       <div class="field">
-        <label for="candidateEditorClient">Όνομα πελάτη</label>
-        <select id="candidateEditorClient">
-          <option value="">— Επιλογή από τις Επαφές της εφαρμογής —</option>
-        </select>
+        <label for="candidateEditorClientButton">Όνομα πελάτη</label>
+        <input type="hidden" id="candidateEditorClient">
+        <button class="candidate-contact-trigger" id="candidateEditorClientButton" type="button" onclick="openCandidateContactPicker()" aria-haspopup="dialog">
+          <span class="candidate-contact-trigger-name" id="candidateEditorClientLabel">— Επιλογή από τις Επαφές εφαρμογής —</span>
+          <span class="candidate-contact-trigger-meta" id="candidateEditorClientMeta">Lidl, Μασούτης, Electra και λοιπές επαφές</span>
+        </button>
       </div>
       <div class="field">
         <label for="candidateEditorType">Είδος εργασίας</label>
@@ -2413,6 +2426,23 @@ body.board-mode:not(.board-planning-fullscreen) #board #poolVehs{
       <button class="btn light" type="button" onclick="closeCandidateEditor()">Άκυρο</button>
       <button class="btn primary" type="button" onclick="saveCandidateEditor()" style="min-width:110px">Αποθήκευση</button>
     </div>
+  </div>
+</div>
+
+<div id="candidateContactPickerModal" class="modal" onclick="if(event.target===this)closeCandidateContactPicker()">
+  <div class="box candidate-contact-picker-box">
+    <div class="row">
+      <div>
+        <h2>Επιλογή από Επαφές εφαρμογής</h2>
+        <div class="small">Η ίδια λίστα καταστημάτων και επαφών που εμφανίζεται στην καρτέλα «Επαφές».</div>
+      </div>
+      <button class="btn light" type="button" onclick="closeCandidateContactPicker()">✕</button>
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label for="candidateContactSearch">Αναζήτηση επαφής / καταστήματος</label>
+      <input type="search" id="candidateContactSearch" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Όνομα, κωδικός καταστήματος, πόλη, διεύθυνση..." oninput="renderCandidateContactPicker()">
+    </div>
+    <div id="candidateContactPickerList" class="candidate-contact-picker-results"></div>
   </div>
 </div>
 
